@@ -1,4 +1,7 @@
+// printing speech timing to see if we can space text based on speed it is spoken at
+
 // use callbacks for speechstart / speechend to see if you can get the timing for each word
+// https://github.com/IDMNYU/p5.js-speech/blob/master/examples/03callbacks.html
 // moveable type: https://awarua.github.io/creative-coding/tutorials/tut06/
 
 

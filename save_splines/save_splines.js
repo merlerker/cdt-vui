@@ -1,9 +1,13 @@
+// trace splines over an image then save as a list of points
+// also see for possible svg conversion: https://css-tricks.com/svg-path-syntax-illustrated-guide/
+
 let myfilename = "blind-contour-04";
 let mysvg;
 let mypts = [];
 
 function preload() {
-    mysvg = loadImage("VUI_blind-contour/" + myfilename + ".svg");
+    // mysvg = loadImage("VUI_blind-contour/" + myfilename + ".svg");
+    mysvg = loadImage("listening.png");
 }
 
 function setup() {

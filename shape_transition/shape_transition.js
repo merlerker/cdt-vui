@@ -5,6 +5,8 @@ let ptsC;
 let transitioning = false; // transitioning between VUI states
 let stringA, stringB;
 
+let yoff = 0.0;
+
 
 function preload() {
     let fileA = "blind-contour-01";
