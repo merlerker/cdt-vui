@@ -19,8 +19,19 @@ var sketch = function(p) {
 
   // dragged node
   var selectedNode = null;
-
   var nodeDiameter = 16;
+  let anchors = [];
+
+  //gifLoading
+
+  // var gif_loadImg, gif_createImg;
+
+  /*
+  p.preload = function() {
+    gif_loadImg = p.loadImage("./assets/vui_states.gif");
+    gif_createImg = p.createImg("./assets/vui_states.gif");
+  }
+  */
 
   p.setup = function() {
     p.createCanvas(p.windowWidth, p.windowHeight);
@@ -28,12 +39,18 @@ var sketch = function(p) {
     p.noStroke();
 
     initNodesAndSprings();
-    console.log("setyp")
   };
 
   p.draw = function() {
 
     p.background(255);
+
+    //gif
+    /*
+    p.image(gif_loadImg, 50, 50);
+    gif_createImg.size(200);
+    gif_createImg.position(p.windowWidth / 2, p.windowHeight / 2);
+    */
 
     // let all nodes repel each other
     for (var i = 0; i < nodes.length; i++) {
@@ -58,12 +75,11 @@ var sketch = function(p) {
     p.fill(c1);
     p.smooth();
     p.beginShape();
-    for (let i=10; i<nodes.length; i+=nNodes) {
+    for (let i = 10; i < nodes.length; i += nNodes) {
       p.curveVertex(nodes[i].x, nodes[i].y);
     }
     p.endShape(p.CLOSE);
 
-    /*
     // draw nodes
     p.stroke(0, 130, 164);
     p.strokeWeight(2);
@@ -79,7 +95,11 @@ var sketch = function(p) {
       p.fill(0);
       p.ellipse(nodes[i].x, nodes[i].y, nodeDiameter - 4, nodeDiameter - 4);
     }
-    */
+  }
+
+  var addAnchor = function(i,j) {
+    let anchor = [i,j];
+    anchors.push(anchor);
   }
 
   var initNodesAndSprings = function() {
@@ -95,7 +115,7 @@ var sketch = function(p) {
     for (let i = 0; i < nSpokes; i++) {
       let spoke = []
       for (let j = 0; j < nNodes; j++) {
-        rad = (j+1) / nNodes * maxRadius;
+        rad = (j + 1) / nNodes * maxRadius;
         let x = rad * p.cos(i * theta) + cx;
         let y = -rad * p.sin(i * theta) + cy;
         let n = new Node(x, y);
@@ -110,7 +130,7 @@ var sketch = function(p) {
     for (let i = 0; i < spokes.length; i++) {
       for (let j = 0; j < spokes[i].length; j++) {
 
-        let rLen = maxRadius/(nNodes);
+        let rLen = maxRadius / (nNodes);
 
         if (j == 0) {
           var newSpring = new Spring(spokes[i][j], cn);
@@ -140,7 +160,7 @@ var sketch = function(p) {
               sLength = rLen;
               sStiffness = 0.5;
             } else {
-              sLength = 2 * p.tan(theta/2) * rLen * (j+1);
+              sLength = 2 * p.tan(theta / 2) * rLen * (j + 1);
               sStiffness = 0.5;
             }
 
