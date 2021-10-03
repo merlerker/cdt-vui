@@ -14,7 +14,7 @@ rec.interimResults = true; // allow partial recognition (faster, less accurate)
 
 //Variables for rita
 let word, features;
-let syl, str, spl;
+let syl, str, spl; 
 let xWidth = [];
 
 //Preload Font
@@ -109,6 +109,7 @@ function draw() {
 }
 
 //Syllabify Original Word
+// https://stackoverflow.com/questions/49403285/splitting-word-into-syllables-in-javascript/49407494
 const syllableRegex = /[^aeiouy]*[aeiouy]+(?:[^aeiouy]*$|[^aeiouy](?=[^aeiouy]))?/gi;
 
 function syllabify(words) {

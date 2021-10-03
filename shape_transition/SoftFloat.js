@@ -4,11 +4,11 @@
 class SoftFloat {
 
     static ATTRACTION = 0.2; //.1
-    static DAMPING = 0.5; //.2
+    static DAMPING = 0.3; //.2
 
     constructor(value, attraction, damping, jitter) {
         this.value = value; 
-        this.attraction = attraction; 
+        this.attraction = attraction || SoftFloat.ATTRACTION; 
         this.damping = damping;
         this.target_jitter = jitter; // jitter during target transitioning
         this.tolerance = .05; // looser tolerance when we have jitter, so we can count the transition as complete
@@ -17,9 +17,9 @@ class SoftFloat {
         if (damping==undefined) { 
             this.damping = SoftFloat.DAMPING; 
         }
-        if (attraction==undefined) { 
-            this.attraction = SoftFloat.ATTRACTION; 
-        }
+        // if (attraction==undefined) { 
+        //     this.attraction = SoftFloat.ATTRACTION; 
+        // }
         if (jitter==undefined) { 
             this.target_jitter = 0; 
             this.tolerance = .0001; // tighter tolerance without jitter, so we reach the actual target

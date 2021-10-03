@@ -47,7 +47,7 @@ function parseToArray(stringArr) {
         if (line.length > 0) {
             let pt = line.split(","); // split x and y
             for (let j=0; j<pt.length; j++) {
-                pt[j] = new SoftFloat(parseFloat(pt[j]), .2, .3, .25); // convert string to float
+                pt[j] = new SoftFloat(parseFloat(pt[j])); // convert string to float
             }
             pts.push(pt);
         }

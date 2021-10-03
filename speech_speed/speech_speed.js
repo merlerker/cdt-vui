@@ -74,7 +74,6 @@ function draw() {
     spoken_text, 0, 0, 100, {
       sampleFactor: 1.5,
       simplifyThreshold: 0
-    });
 
   //bounds = font.textBounds(spoken_text, 0, 0, 200);
     
@@ -109,7 +108,7 @@ function parseResult() {
     var resultstring = listener.resultString;
 
     // print(listener.resultJSON['timeStamp']);
-    print(listener.resultConfidence)
+    print(listener.resultConfidence);
     
     spoken_text = resultstring;
     print(resultstring);

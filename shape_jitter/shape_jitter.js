@@ -235,7 +235,7 @@ function parseResult() {
     spoken_text = mostrecentword;
 
     // print(listener.resultJSON['timeStamp']);
-    print(listener.resultConfidence)
+    print("confidence: " + listener.resultConfidence)
     print(resultstring);
     print(mostrecentword);
   }

@@ -89,6 +89,8 @@ function draw() {
   translate(-bounds.x * width / bounds.w + 150, -bounds.y * height / bounds.h - (height - bounds.h)/2);
   for (let i = 0; i < points.length; i++) {
     let p = points[i];
+
+    // wave in x dir
     //vertex(
     //  p.x * width / bounds.w +
     //    sin(10 * p.y / bounds.h + millis() / 1000) * width / 30,
@@ -99,6 +101,12 @@ function draw() {
         sin(10 * p.y / bounds.h + millis() / 1000) * width / 30,
       p.y * height / bounds.h, 10
     );
+
+    // wave in y dir
+    // ellipse(
+    //   p.x * width / bounds.w,
+    //   p.y * height / bounds.h + sin(10 * p.x / bounds.w + millis() / 1000)  * width / 30, 10
+    // );
   }
   //endShape(CLOSE);
 
