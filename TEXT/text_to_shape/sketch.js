@@ -13,7 +13,7 @@ let scribble_pts = [];
 //Preload Font
 function preload() {
   // preload OTF font file
-  font = loadFont('./assets/Roboto-Bold.ttf');
+  font = loadFont('./assets/Didot-Bold.otf');
 }
 
 function setup() {
@@ -36,13 +36,13 @@ function setup() {
 }
 
 function draw() {
-  stroke(255);
+  stroke(0);
   strokeWeight(2);
   noFill();
 
-  background(0);
+  background('#F8F5F4');
 
-  let x = width/2;
+  let x = width/2 - textWidth(msg)/2;
   let y = height/2;
 
   drawScribbleWord(pts,x,y);
@@ -178,7 +178,7 @@ function wordToScribblePts(word) {
         bounds: bounds,
         centerX: cx,
         centerY: cy,
-        weight: random(2,3) // weight of scribble
+        weight: random(3,4) // weight of scribble
       }
   
       scribble_pts.push(vector)
@@ -196,13 +196,13 @@ function wordToScribblePts(word) {
  * @param {number} y Bottom-left y
  */
 function drawScribbleWord(word_pts,x,y) {
-  const gap = 6.5; // gap between scribbles
+  const gap = 4.5; // gap between scribbles
 
   push();
   translate(x,y);
 
 	for (let vec of word_pts) {
-     const theta = Math.PI*3/4; // angle of scribbles
+     const theta = random(-Math.PI/8,Math.PI/8); // angle of scribbles
 		//  const theta = Math.atan2(mouseY - vec.yCoords[0], -1 * (mouseX - vec.centerX));
 		 angle = theta * (180 / Math.PI) + 90;
 		 strokeWeight( vec.weight );
