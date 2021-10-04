@@ -33,8 +33,6 @@ function setup() {
   pts = wordToScribblePts(msg);
 
   // pts = wordToStressPts(msg);
-  // [pts, stress_xc] = wordToPts(msg); // compute stress distortion later
-
 }
 
 function draw() {
@@ -49,7 +47,6 @@ function draw() {
 
   drawScribbleWord(pts,x,y);
   // drawWord(pts,x,y); // draw points as given
-  // drawWordWithStress(pts,stress_xc,x,y); // draw points, computing stress distortion
 }
 
 function mousePressed() {
@@ -61,7 +58,7 @@ function mousePressed() {
 function gaussian(x, center, height, std_dev) {
   let peak_xc = center || mouseX-width/2;
   // let peak_xc = center || (map(mouseX-width/2, 0, width, 0, textWidth(msg))); // instead of textWidth(msg) can use bounds.w
-  let curve_h = height || 100;
+  let curve_h = height || 600;
   let curve_sd = std_dev || 100;
 
   return curve_h*Math.E**(-1* (x - peak_xc)**2 / (2* curve_sd**2));
@@ -165,6 +162,7 @@ function wordToScribblePts(word) {
             gaussian_total += gaussian(pt.x, center=xc);
           }
           pt.y -= gaussian_total; // position y points according to gaussian func
+          pt.y = map(pt.y, -fSize/4 - gaussian_total, -fSize - gaussian_total, -fSize/4, -fSize - gaussian_total); // map points to distribute the gaussian "lift"
           if (pt.y < min_y) { min_y = pt.y; }
         }
 
@@ -234,17 +232,17 @@ function drawScribbleWord(word_pts,x,y) {
 
   // 1. Iterate through syllables
   for (let [i, syllable]  of syllables.entries()) {
-    let syl_xc = 0;
-    let stressed = !!parseInt(stresses[i]); // or Boolean(parseInt(stresses[i]))
+    let syl_pts=[]; // Pts array for this syllable
 
+    // If this syllable is stressed, save the center position
+    let stressed = !!parseInt(stresses[i]); // or Boolean(parseInt(stresses[i]))
     if (stressed) {
+      print("stressed syllable: ", syllable);
       let bounds = font.textBounds(syllable, x, 0, fSize);
       let syl_w = bounds.w + bounds.advance;
-      syl_xc = x + syl_w/2;
+      let syl_xc = x + syl_w/2; // x-center of syllable
+      stress_positions.push(syl_xc);
     }
- 
-    let syl_start_x = x; // This syllable's starting x position
-    let syl_pts=[]; // Pts array for this syllable
     
     // 2. Iterate through letters, saving points
     for (let j=0; j<syllable.length; j++) {
@@ -252,40 +250,33 @@ function drawScribbleWord(word_pts,x,y) {
       let letter_pts = font.textToPoints(m, x, y, fSize);
       let bounds = font.textBounds(m, 0, 0, fSize);
       let letter_w = bounds.w + bounds.x + bounds.advance;
+      // let letter_w = textWidth(m); // Alternative way of measuring letter width
       syl_pts.push(letter_pts);
 
-      // x += textWidth(m); // Alternative way of measuring letter width
       x += letter_w; // Shift forward to place the next letter in its position
     }
 
-    let syl_width = x - syl_start_x;
     word_pts.push(syl_pts); // Save this syllable's letter pts
-
-    // If this syllable is stressed, save the center position
-    if (stressed) {
-      print("stressed syllable: ", syllable);
-      // stress_positions.push(syl_start_x + syl_width/2);
-      stress_positions.push(syl_xc);
-    }
-
   }
 
-  // Add effect from stressed syllables
+  // Add distortion effect from all stressed syllables
   // 1. Iterate through syllables
   for (let syllable of word_pts) {
     // 2. Iterate through letters
     for (let letter of syllable) {
       // 3. Iterate through points
       for (let pt of letter) {
-        // only distort the top 1/4 of the letter
+        // only distort the top 3/4 of the letter
         if (pt.y < (-fSize/4)) {
           // taking into account all stress centers
           // compute total gaussian effect on each point
           let gaussian_total = 0;
+          let gaussian_max = gaussian(stress_positions[0], center=stress_positions[0]);
           for (xc of stress_positions) {
             gaussian_total += gaussian(pt.x, center=xc);
           }
           pt.y -= gaussian_total; // position y points according to gaussian func
+          pt.y = map(pt.y, -fSize/4 - gaussian_total, -fSize - gaussian_total, -fSize/4, -fSize - gaussian_total); // map points to distribute the gaussian "lift"
         }
       }
     }
@@ -315,101 +306,6 @@ function drawScribbleWord(word_pts,x,y) {
         // line(pt.x, 0, pt.x, pt.y);
         ellipse(pt.x,pt.y,5,5);
       }
-    }
-  }
-  pop();
-
-}
-
-/**
- * Returns points and stress positions for given word, relative to (0,0).
- *
- * @param {string} word The word to parse into points and stressed syllables.
- * @return {number[][][]} word_pts Nested array where 1st level is syllables, 2nd level is each letter in that syllable, 3rd level is each pt for that letter
- * @return {number[]} stress_positions Array of x positions of stresses (center of syllable)
- */
- function wordToPts(word) {
-  let word_pts = [];
-  let stress_positions = [];
-
-  let syllables = syllabify(word);
-  let stresses = RiTa.stresses(word).split('/');
-
-  // Calculate positions relative to (0,0) -- we will translate later
-  let x = 0;
-  let y = 0;
-
-  // 1. Iterate through syllables
-  for (let [i, syllable]  of syllables.entries()) {
-    let stressed = !!parseInt(stresses[i]); // or Boolean(parseInt(stresses[i]))
- 
-    let syl_start_x = x; // This syllable's starting x position
-    let syl_pts=[]; // Pts array for this syllable
-    
-    // 2. Iterate through letters, saving points
-    for (let j=0; j<syllable.length; j++) {
-      let m = syllable[j];
-      let letter_pts = font.textToPoints(m, x, y, fSize);
-      let bounds = font.textBounds(m, 0, 0, fSize);
-      let letter_w = bounds.w + bounds.x + bounds.advance;
-      syl_pts.push(letter_pts);
-
-      // x += textWidth(m); // Alternative way of measuring letter width
-      x += letter_w; // Shift forward to place the next letter in its position
-    }
-
-    let syl_width = x - syl_start_x;
-    word_pts.push(syl_pts); // Save this syllable's letter pts
-
-    // If this syllable is stressed, save the center position
-    if (stressed) {
-      print("stressed syllable: ", syllable);
-      stress_positions.push(syl_start_x + syl_width/2);
-    }
-
-  }
-
-  return [word_pts, stress_positions];
-}
-
-/**
- * Draws word and computes distortion for stressed syllables, with starting (x,y)
- *
- * @param {number[][][]} word_pts Nested array where 1st level is syllables, 2nd level is each letter in that syllable, 3rd level is each pt for that letter
- * @param {number[]} stress_positions Array of x positions of stresses (center of syllable)
- * @param {number} x Bottom-left x
- * @param {number} y Bottom-left y
- */
-function drawWordWithStress(word_pts,stress_positions,x,y) {
-  //Drawing Each Letter
-  push();
-  translate(x,y);
-
-  // 1. Iterate through syllables
-  for (let syllable of word_pts) {
-    // 2. Iterate through letters
-    for (let letter of syllable) {
-      beginShape();
-      // 3. Iterate through points
-      for (let pt of letter) {
-        let letter_y = pt.y;
-        let letter_x = pt.x;
-
-        // only distort the top 1/4 of the letter
-        if (pt.y < (-fSize/4)) {
-          // taking into account all stress centers
-          // compute total gaussian effect on each point
-          let gaussian_total = 0;
-          for (xc of stress_positions) {
-            gaussian_total += gaussian(pt.x, center=xc);
-          }
-          letter_y = pt.y - gaussian_total;
-
-          // position y points according to gaussian func
-        }
-        line(letter_x, 0, letter_x, letter_y);
-      }
-      endShape(CLOSE);
     }
   }
   pop();
