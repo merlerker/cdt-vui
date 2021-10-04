@@ -10,7 +10,6 @@ let stress_xc; // x positions of stress centers
 let scribble;
 let scribble_pts = [];
 let scribble_seed = 1; // random seed for scribble
-let yoff = 0.0; // position for sin wave
 
 //Preload Font
 function preload() {
@@ -49,7 +48,9 @@ function draw() {
   let y = height/2;
 
   drawScribbleWord(pts,x,y);
+  // Comment out this line to stop scribble from changing each frame
   scribble_seed+=.18;
+
   // drawWord(pts,x,y); // draw points as given
 
 }
@@ -212,23 +213,9 @@ function drawScribbleWord(word_pts,x,y) {
 		 angle = theta * (180 / Math.PI) + 90;
 		 strokeWeight( vec.weight );
 
-     xCoords = [];
-     yCoords = [];
-     for (let [i,x] of vec.xCoords.entries()) {
-        y = vec.yCoords[i];
-        pt = [x,y];
-        center = [vec.centerX, vec.centerY];
-        let wave_pt = wavePt(center, pt);
-        xCoords.push(wave_pt[0]);
-        yCoords.push(wave_pt[1]);
+		 if (scribble) {
+			 scribble.scribbleFilling( vec.xCoords, vec.yCoords , gap, angle );
      }
-
-     if (scribble) {
-      scribble.scribbleFilling( xCoords, yCoords , gap, angle );
-    }
-		//  if (scribble) {
-		// 	 scribble.scribbleFilling( vec.xCoords, vec.yCoords , gap, angle );
-    //  }
 	}
 
   pop();
@@ -331,28 +318,4 @@ function drawScribbleWord(word_pts,x,y) {
   }
   pop();
 
-}
-
-function wavePt(center, pt) {
-  // get the angle from A to B, where each is an array [x,y]
-  function getAngle(A, B) {
-    // move A to 0,0
-    // we could also push to A as our center
-    let translated_x = B[0] - A[0];
-    let translated_y = B[1] - A[1];
-    return Math.atan2(translated_y, translated_x);
-  }
-
-  // get the distance from A to B, where each is an array [x,y]
-  function getDistance(A, B) {
-    return Math.sqrt((A[0]-B[0])**2 + (A[1]-B[1])**2);
-  }
-
-  let angle = getAngle(center, pt);
-  
-  let magnitude = 10;
-  let offset = map(sin(angle*100 + yoff*2), -1, 1, -magnitude, magnitude); // distort w sin curve on edge
-  
-  let r = getDistance(center, pt) + offset;
-  return [r * cos(angle), r * sin(angle)];
 }
