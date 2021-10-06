@@ -11,10 +11,13 @@ let scribble;
 let scribble_pts = [];
 let scribble_seed = 1; // random seed for scribble
 
+let X_SHIFT, Y_SHIFT;
+
 //Preload Font
 function preload() {
   // preload OTF font file
-  font = loadFont('./assets/Didot-Bold.otf');
+  // font = loadFont('./assets/Didot-Bold.otf');
+  font = loadFont('./assets/Roboto-Bold.ttf');
 }
 
 function setup() {
@@ -30,9 +33,12 @@ function setup() {
   textSize(fSize);
   msg = 'physicality';
 
-  pts = wordToScribblePts(msg);
+  X_SHIFT = width/2 - textWidth(msg)/2;
+  Y_SHIFT = height/2;
 
-  // pts = wordToStressPts(msg);
+  // pts = wordToScribblePts(msg);
+
+  pts = wordToStressPts(msg);
 }
 
 function draw() {
@@ -44,14 +50,12 @@ function draw() {
 
   background('#F8F5F4');
 
-  let x = width/2 - textWidth(msg)/2;
-  let y = height/2;
-
-  drawScribbleWord(pts,x,y);
+  // drawScribbleWord(pts,x,y);
   // Comment out this line to stop scribble from changing each frame
-  scribble_seed+=.18;
+  // scribble_seed+=.18;
 
-  // drawWord(pts,x,y); // draw points as given
+  pts = wordToStressPts(msg);
+  drawWord(pts,X_SHIFT,Y_SHIFT); // draw points as given
 
 }
 
@@ -184,7 +188,7 @@ function wordToScribblePts(word) {
         bounds: bounds,
         centerX: cx,
         centerY: cy,
-        weight: 4 // weight of scribble
+        weight: 2.5 // weight of scribble
       }
   
       scribble_pts.push(vector)
@@ -301,6 +305,7 @@ function drawScribbleWord(word_pts,x,y) {
  * @param {number} y Bottom-left y
  */
  function drawWord(word_pts,x,y) {
+
   //Drawing Each Letter
   push();
   translate(x,y);
@@ -309,11 +314,21 @@ function drawScribbleWord(word_pts,x,y) {
   for (let syllable of word_pts) {
     // 2. Iterate through letters
     for (let letter of syllable) {
+      beginShape();
       // 3. Iterate through points
       for (let pt of letter) {
+        // stroke(0);
         // line(pt.x, 0, pt.x, pt.y);
-        ellipse(pt.x,pt.y,5,5);
+
+        // fill(0);
+        // noStroke();
+        // ellipse(pt.x,pt.y,5,5);
+
+        fill(0);
+        noStroke();
+        vertex(pt.x,pt.y);
       }
+      endShape();
     }
   }
   pop();
