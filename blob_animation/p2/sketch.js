@@ -5,52 +5,104 @@
 var sketch = function(p) {
   // an array for the nodes
   var nodes = [];
+  var keyNodes = [];
+  var keyCurr = [];
+
+  // an array for the springs
+  var springs = [];
+
+  //KeyFrameArray
+  var keyFrames = [];
+  var switched = false;
+  var prevTarget = 0;
 
   //node Properties
   let nSpokes = 20;
   let nNodes = 10;
-  let maxRadius = 400;
-
-  // an array for the springs
-  var springs = [];
+  let maxRadius = 80;
 
   //Graphics
   let c1 = p.color('#84B8FD');
 
   // dragged node
+  var selectedNodes = [];
   var selectedNode = null;
   var nodeDiameter = 16;
-  let anchors = [];
+  //let anchors = [];
 
-  //gifLoading
+  //Gifs
+  var listToEnco = [];
+  var cX = 0;
+  var cY = 0;
+  var nW = 1000;
+  var nH = 0;
 
-  // var gif_loadImg, gif_createImg;
+  //Time
+  var time = 0;
+  var fps = 10;
+  var frames = 0;
 
-  /*
+  var key;
+
   p.preload = function() {
-    gif_loadImg = p.loadImage("./assets/vui_states.gif");
-    gif_createImg = p.createImg("./assets/vui_states.gif");
+    for (var i = 0; i < 28; i++) {
+      listToEnco[i] = p.loadImage("./assets/" + (i + 1) + ".png");
+    }
   }
-  */
 
   p.setup = function() {
+
+    //Canvas + Graphics Setup
     p.createCanvas(p.windowWidth, p.windowHeight);
     p.background(255);
     p.noStroke();
 
+    //Setup Meshes
     initNodesAndSprings();
+    gifResize();
+    loadKeyFrames();
   };
 
   p.draw = function() {
 
     p.background(255);
+    //p.ellipse(p.windowWidth,p.windowHeight,10, 10);
 
-    //gif
-    /*
-    p.image(gif_loadImg, 50, 50);
-    gif_createImg.size(200);
-    gif_createImg.position(p.windowWidth / 2, p.windowHeight / 2);
-    */
+    //Draw Functions
+    updateMesh();
+    drawMesh();
+    drawChar(p.windowWidth / 2, p.windowHeight / 2);
+  }
+
+  var drawChar = function(x, y) {
+
+    //AdvanceFrames
+    if (time % fps == 0) {
+      frames += 1;
+    }
+
+    //ImageProperties
+    let fIndex = frames % listToEnco.length;
+    cX = x - nW / 2;
+    cY = y - nH / 2;
+
+    p.image(listToEnco[fIndex], cX, cY);
+    time++;
+  }
+
+  var updateMesh = function() {
+
+    applyFrames();
+
+    for (let i = 0; i < keyCurr.length; i += 2) {
+      keyCurr[i][1].update();
+      keyCurr[i+1][1].update();
+
+      let uX = keyCurr[i][1].get();
+      let uY = keyCurr[i+1][1].get();
+
+      nodes[keyCurr[i][0]].track(uX,uY);
+    }
 
     // let all nodes repel each other
     for (var i = 0; i < nodes.length; i++) {
@@ -60,18 +112,107 @@ var sketch = function(p) {
     for (var i = 0; i < springs.length; i++) {
       springs[i].update();
     }
+
     // apply velocity vector and update position
     for (var i = 0; i < nodes.length; i++) {
-      nodes[i].update();
+        nodes[i].update();
+    }
+  }
+
+  var gifResize = function() {
+    for (let img of listToEnco) {
+      img.resize(1000, 0);
+      nH = img.height;
+    }
+  }
+
+  var loadKeyFrames = function() {
+    let rX = p.windowWidth - 1000 / 2;
+    let rY = p.windowHeight - 600 / 2;
+    keyFrames = [
+      [1, [15, 9, rX - 500, rY - 75],
+        [5, 9, rX - 500, rY - 500],
+      ],
+      [10, [0, 9, rX - 75, rY],
+        [10, 9, rX - 600, rY],
+      ]
+    ];
+  }
+
+  var applyFrames = function() {
+
+    let frame = frames % listToEnco.length + 1;
+
+    nextKeyFrames(frame);
+  }
+
+  var nextKeyFrames = function(frame) {
+
+    if (prevTarget != frame) {
+      switched = false;
+      prevTarget = frame;
     }
 
-    if (selectedNode != null) {
-      selectedNode.x = p.mouseX;
-      selectedNode.y = p.mouseY;
-    }
+    for (var i = 0; i < keyFrames.length; i++) {
+      if (switched == false) {
+        if (keyFrames[i][0] == frame) {
 
+          //Clear between frames
+          key = [];
+          keyNodes = [];
+          keyCurr = [];
+
+          //Fill between Keyframes
+          let next = i + 1;
+          if (next >= keyFrames.length) {
+            next = 0;
+          }
+
+          for (let j = 1; j < keyFrames[next].length; j++) {
+            key.push(keyFrames[next][j]);
+          }
+
+          let c = 0;
+          for (let k of key) {
+            console.log(k);
+            let nNum = k[0] * nNodes + k[1];
+
+            //Keynodes
+            let sfXP = new SoftFloat(k[2]);
+            let sfYP = new SoftFloat(k[3]);
+
+            let nX, nY = nodes[nNum].getPos();
+            console.log(nodes[nNum]);
+
+            let sfX = new SoftFloat(nX);
+            let sfY = new SoftFloat(nY);
+
+            //Targets
+            sfX.setTarget(sfXP.get());
+            sfY.setTarget(sfYP.get());
+
+            //currKeys
+            keyCurr.push([nNum, sfX]);
+            keyCurr.push([nNum, sfY]);
+
+            keyNodes.push([nNum, sfXP]);
+            keyNodes.push([nNum, sfYP]);
+
+            console.log(keyCurr);
+            console.log('div')
+            console.log(keyNodes);
+            c += 2;
+          }
+
+          switched = true;
+          return;
+        }
+      }
+    }
+  }
+
+  var drawMesh = function() {
     //Draw Outline
-
     p.fill(c1);
     p.smooth();
     p.beginShape();
@@ -95,11 +236,6 @@ var sketch = function(p) {
       p.fill(0);
       p.ellipse(nodes[i].x, nodes[i].y, nodeDiameter - 4, nodeDiameter - 4);
     }
-  }
-
-  var addAnchor = function(i,j) {
-    let anchor = [i,j];
-    anchors.push(anchor);
   }
 
   var initNodesAndSprings = function() {
@@ -178,37 +314,7 @@ var sketch = function(p) {
         nodes.push(n);
       }
     }
-    console.log(springs);
   }
-
-  p.mousePressed = function() {
-    // Ignore anything greater than this distance
-    var maxDist = 20;
-    for (var i = 0; i < nodes.length; i++) {
-      var checkNode = nodes[i];
-      var d = p.dist(p.mouseX, p.mouseY, checkNode.x, checkNode.y);
-      if (d < maxDist) {
-        selectedNode = checkNode;
-        maxDist = d;
-      }
-    }
-  };
-
-  p.mouseReleased = function() {
-    if (selectedNode != null) {
-      selectedNode = null;
-    }
-  };
-
-  p.keyPressed = function() {
-    if (p.key == 's' || p.key == 'S') p.saveCanvas(gd.timestamp(), 'png');
-
-    if (key == 'r' || key == 'R') {
-      p.background(255);
-      initNodesAndSprings();
-    }
-  };
-
 }
 
 var myp5 = new p5(sketch);

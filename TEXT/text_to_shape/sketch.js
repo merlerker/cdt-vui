@@ -81,10 +81,10 @@ function wordToPoints(word) {
   for (let i=0; i<syllables.length; i++) {
     let syllable = syllables[i];
     let stressed = !!parseInt(stresses[i]); // or Boolean(parseInt(stresses[i]))
- 
+
     let syl_start_x = x; // This syllable's starting x position
     let syl_pts=[]; // Pts array for this syllable
-    
+
     // 2. Iterate through letters, saving points
     for (let j=0; j<syllable.length; j++) {
       let m = syllable[j];
@@ -154,5 +154,4 @@ function drawWordPts(word_pts,x,y) {
     }
   }
   pop();
-
 }
