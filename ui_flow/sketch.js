@@ -1,3 +1,11 @@
+// See how Q does state machine here: https://editor.p5js.org/qshim/sketches/JR8KHFUVs
+//  // make everything invisible
+// for(let i=0; i<video_names.length; i++){
+//   vids[i].style('display', 'none');
+//  }
+//  //make only vids[counter] visible
+//  vids[counter].style('display', 'initial');
+
 // State machine model
 const STATES = {'INTRO':0, 'HELLO':8, 'SHELF':1, 'READING':2, 'HELP':3, 'WORD_CHILD':4, 'WORD_VUI':5, 'DEFINE':6, 'STATS':7};
 let animations = {};

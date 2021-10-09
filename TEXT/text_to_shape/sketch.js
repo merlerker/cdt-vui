@@ -32,7 +32,7 @@ function setup() {
   fSize = 256;
   textFont(font);
   textSize(fSize);
-  msg = 'physicality';
+  msg = 'rumbled';
 
   X_SHIFT = width/2 - textWidth(msg)/2;
   Y_SHIFT = height/2;
@@ -51,9 +51,9 @@ function draw() {
 
   background('#F8F5F4');
 
-  // drawScribbleWord(pts,x,y);
+  // drawScribbleWord(pts,X_SHIFT,Y_SHIFT);
   // Comment out this line to stop scribble from changing each frame
-  // scribble_seed+=.18;
+  scribble_seed+=.18;
 
   updateStressPts(mouseX);
   drawWord(X_SHIFT,Y_SHIFT); // draw points as given
@@ -118,7 +118,7 @@ function wordToScribblePts(word) {
     for (let j=0; j<syllable.length; j++) {
       let m = syllable[j];
       let letter_pts = font.textToPoints(m, x, y, fSize, {
-        sampleFactor: 0.3,
+        sampleFactor: .3,
         simplifyThreshold: 0
       });
       let bounds = font.textBounds(m, 0, 0, fSize);
@@ -196,7 +196,7 @@ function wordToScribblePts(word) {
     }
   }
 
-  return scribble_pts;
+  return [scribble_pts,stress_positions];
 }
 
 /**
