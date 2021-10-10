@@ -5,7 +5,7 @@ var resdiv;
 var options = [' ','`','.',',-',"':",';_~','"','*|','!l',
 '+=','>','<L','\\i','/^','1?','Jv','r','()cx','7}','sz',
 '3u','2Ckty{','jn','4FVY','5P[]af','qw','Sde','Eo',
-'NOZ','9HXgh','GTU','$AIm','QW','KM','%8','#06@','bp',
+'NOZ','9HXgh','GTU','$AIm','QW','KM','L','#06@','bp',
 'D','&','R','B'];
 var gui,btn,livebtn; // buttons
 var live = false;
@@ -31,24 +31,24 @@ function setup() {
   livebtn.mousePressed(function(){live=!live;});
   livebtn.parent(gui);
   
-  cnv = createCanvas(400,300);
+  cnv = createCanvas(windowWidth,windowHeight);
   background(255);
 
-  img = loadImage('data/charlize_level.jpg', function(pic){
+  img = loadImage('shadows.png', function(pic){
     calcImg(pic);
   });
 }
 
 function draw() {
-  image(capture, 0, 0, width, height);
-  if (live) calcCapture();
+  // image(capture, 0, 0, width, height);
+  // if (live) calcCapture();
 }
 
 function calcImg(pic) {
   var res = '<pre>';
-  for (var i=0; i<60; i++) {
+  for (var i=0; i<600; i++) {
     var line = '';
-    for (var j=0; j<140; j++) {
+    for (var j=0; j<14000; j++) {
       var x = pic.get(2+round(j*5.714),5+i*10);
       var v = round((1-x[0]/255.0)*40);
       var index = floor(random(options[v].length));

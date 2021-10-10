@@ -1,3 +1,6 @@
+let speaker;
+let playhead;
+
 // Font vars
 let font;
 let fSize;
@@ -7,6 +10,7 @@ let msg;
 let undistorted_pts; // Nested array (syllables, letters, pts) for undistorted pts
 let pts; // Nested array (syllables, letters, pts) for gaussian distorted pts
 let stress_xc; // x positions of stress centers
+let word_w;
 
 let scribble;
 let scribble_pts = [];
@@ -37,9 +41,12 @@ function setup() {
   X_SHIFT = width/2 - textWidth(msg)/2;
   Y_SHIFT = height/2;
 
+  speaker = new p5.Speech();
+  playhead = X_SHIFT;
+
   // [pts, stress_xc] = wordToScribblePts(msg);
 
-  [undistorted_pts,pts,stress_xc] = wordToStressPts(msg);
+  [undistorted_pts,pts,stress_xc,word_w] = wordToStressPts(msg);
 }
 
 function draw() {
@@ -52,16 +59,26 @@ function draw() {
   background('#F8F5F4');
 
   // drawScribbleWord(pts,X_SHIFT,Y_SHIFT);
-  // Comment out this line to stop scribble from changing each frame
-  scribble_seed+=.18;
+  // // Comment out this line to stop scribble from changing each frame
+  // scribble_seed+=.18;
 
-  updateStressPts(mouseX);
+  updateStressPts(playhead); // add syllable stresses up to given x position
   drawWord(X_SHIFT,Y_SHIFT); // draw points as given
 
+  // we haven't hit the end of the word
+  if (playhead < (X_SHIFT + word_w)) {
+    playhead += 20;
+  }
+  ellipse(playhead,Y_SHIFT,10,10);
 }
 
 function mousePressed() {
   print(mouseX, mouseY);
+
+  if (playhead > (X_SHIFT + word_w)) {
+    playhead = X_SHIFT;
+    speaker.speak(msg);
+  }
 }
 
 // gaussian function
@@ -233,6 +250,7 @@ function drawScribbleWord(word_pts,x,y) {
  * @return {number[][][]{}} word_pts Nested array where 1st level is syllables, 2nd level is each letter in that syllable,
  *                          3rd level is each pt for that letter, and 4th level is a dict at each point {x: SoftFloat, y: SoftFloat}
  * @return {number[]} stress_positions Array of x-centers of stressed syllables
+ * @return {number} x the width of the word
  */
  function wordToStressPts(word) {
   let word_pts = [];
@@ -312,7 +330,7 @@ function drawScribbleWord(word_pts,x,y) {
   }
 
   // return [word_sf,stress_positions];
-  return [word_pts,word_sf,stress_positions];
+  return [word_pts,word_sf,stress_positions,x];
 }
 
 /**
