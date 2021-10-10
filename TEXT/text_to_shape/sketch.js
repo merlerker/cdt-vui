@@ -29,7 +29,7 @@ function setup() {
   createCanvas(windowWidth, windowHeight);
   scribble = new Scribble();
   scribble.roughness = 1.5;
-	scribble.bowing = 15;  
+	scribble.bowing = 15;
 	scribble.maxOffset = 1; //jitteriness
 	strokeWeight( 2 );
 
@@ -124,13 +124,10 @@ function wordToScribblePts(word) {
   // 1. Iterate through syllables
   for (let [i, syllable]  of syllables.entries()) {
     let stressed = !!parseInt(stresses[i]); // or Boolean(parseInt(stresses[i]))
- 
+
     let syl_start_x = x; // This syllable's starting x position
     let syl_pts=[]; // Pts array for this syllable
-    let syl_bounds = [];
-    let syl_cx = [];
-    let syl_cy = [];
-    
+
     // 2. Iterate through letters, saving points
     for (let j=0; j<syllable.length; j++) {
       let m = syllable[j];
@@ -140,7 +137,7 @@ function wordToScribblePts(word) {
       });
       let bounds = font.textBounds(m, 0, 0, fSize);
       let letter_w = bounds.w + bounds.x + bounds.advance;
-      
+
       syl_pts.push(letter_pts);
       syl_bounds.push(bounds);
       syl_cx.push(x + letter_w/2);
@@ -168,7 +165,7 @@ function wordToScribblePts(word) {
   for (let [i,syllable] of word_pts.entries()) {
     let syl_bounds = bounds_lst[i];
     let syl_cx = cx_lst[i];
-    let syl_cy = cy_lst[i]; 
+    let syl_cy = cy_lst[i];
     // 2. Iterate through letters
     for (let [j,letter] of syllable.entries()) {
       let x_pts = []; // list of all x
@@ -208,7 +205,7 @@ function wordToScribblePts(word) {
         centerY: cy,
         weight: 2.5 // weight of scribble
       }
-  
+
       scribble_pts.push(vector)
     }
   }
@@ -276,7 +273,7 @@ function drawScribbleWord(word_pts,x,y) {
       let syl_xc = x + syl_w/2; // x-center of syllable
       stress_positions.push(syl_xc);
     }
-    
+
     // 2. Iterate through letters, saving points
     for (let j=0; j<syllable.length; j++) {
       let m = syllable[j];
@@ -411,5 +408,4 @@ function drawScribbleWord(word_pts,x,y) {
     }
   }
   pop();
-
 }

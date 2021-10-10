@@ -48,6 +48,7 @@ function parseToArray(stringArr) {
             let pt = line.split(","); // split x and y
             for (let j=0; j<pt.length; j++) {
                 pt[j] = new SoftFloat(parseFloat(pt[j])); // convert string to float
+                console.log(pt);
             }
             pts.push(pt);
         }
@@ -110,7 +111,7 @@ function targetArray(A, B) {
                 mapping[A_idx] = B_idx;
                 A[A_idx][0].setTarget(B[B_idx][0].get()); // set softfloat target for x
                 A[A_idx][1].setTarget(B[B_idx][1].get()); // set softfloat target for y
-            } 
+            }
         }
     }
 }

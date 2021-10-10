@@ -70,4 +70,13 @@ Node.prototype.update = function() {
   this.velocity.mult(1 - this.damping);
 };
 
+Node.prototype.track = function(px, py) {
+  this.x = px;
+  this.y = py;
+}
+
+Node.prototype.getPos = function() {
+  return this.x, this.y;
+}
+
 Node.prototype.constructor = Node;

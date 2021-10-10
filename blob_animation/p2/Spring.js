@@ -3,7 +3,7 @@ var Spring = function(fromNode, toNode, length, stiffness, damping) {
   this.toNode = toNode;
 
   this.length = length || 100;
-  this.stiffness = stiffness || 0.6;
+  this.stiffness = stiffness || 1;
   this.damping = damping || 0.01; //0.1
 };
 
