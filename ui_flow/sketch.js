@@ -99,6 +99,8 @@ function draw() {
       break;
 
     case STATES['SHELF']:
+      subtitle("click anywhere to begin reading");
+
       if (mouseIsPressed) {
         state = STATES['READING'];
         hesitation_timer.start();
@@ -106,9 +108,11 @@ function draw() {
       break;
 
     case STATES['READING']:
+      subtitle("if you don't read for 5s, go to word focus");
+
       print(hesitation_timer.currentTime());
-      // No words have been read for 8 seconds
-      if (hesitation_timer.elapsed(2)) {
+      // No words have been read for 5 seconds
+      if (hesitation_timer.elapsed(5)) {
         state = STATES['HELP'];
         hesitation_timer.start();
       }
@@ -126,19 +130,11 @@ function draw() {
         Y_SHIFT = 2*height/3; // baseline
         playhead = X_SHIFT; // set playhead to left side of word
       }
-      else if (hesitation_timer.elapsed(2)) {
-        textSize(24);
-        textAlign(CENTER);
-        text("r u there (say \"yes\")", width/2,7*height/8);
-        textSize(fSize);
-        textAlign(LEFT);
+      else if (hesitation_timer.elapsed(5)) {
+        subtitle("r u there (say \"yes\")");
       }
       else {
-        textSize(24);
-        textAlign(CENTER);
-        text("do you need help? (say \"yes\")", width/2,7*height/8);
-        textSize(fSize);
-        textAlign(LEFT);
+        subtitle("do you need help? (say \"yes\")");
       }
       if (YES_UTTERANCE.includes(mostrecentword.toLowerCase())) {
         state = STATES['WORD_CHILD'];
@@ -155,10 +151,11 @@ function draw() {
 
     case STATES['WORD_CHILD']:
       // TODO: change to break into syllables
+      subtitle("TODO: break into syllables. if you don't read for 5s, VUI will help!");
       drawWord(X_SHIFT,Y_SHIFT); // draw points as given
 
       // Child isn't reading so VUI helps
-      if (hesitation_timer.elapsed(2)) {
+      if (hesitation_timer.elapsed(5)) {
         speaker.speak(current_word);
         state = STATES['WORD_VUI'];
         playing = true; // play the current word out loud
@@ -170,6 +167,8 @@ function draw() {
       break;
 
     case STATES['WORD_VUI']:
+      subtitle("end of the prototype for now");
+
       // TODO: fix logic so it just plays once, then plays again on clicks
       if (playing) {
         // speaker.speak(current_word); // play the current word out loud
@@ -438,4 +437,12 @@ function syllabify(words) {
     }
   }
   pop();
+}
+
+function subtitle(txt) {
+  textSize(24);
+  textAlign(CENTER);
+  text(txt, width/2,7*height/8);
+  textSize(fSize);
+  textAlign(LEFT);
 }
