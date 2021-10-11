@@ -123,14 +123,22 @@ function draw() {
         [undistorted_pts,pts,stress_xc,word_w] = wordToStressPts(current_word);
         // center the word
         X_SHIFT = width/2 - textWidth(current_word)/2;
-        Y_SHIFT = height/2;
+        Y_SHIFT = 2*height/3; // baseline
         playhead = X_SHIFT; // set playhead to left side of word
       }
       else if (hesitation_timer.elapsed(2)) {
-        text("r u there", width/2,height/2);
+        textSize(24);
+        textAlign(CENTER);
+        text("r u there (say \"yes\")", width/2,7*height/8);
+        textSize(fSize);
+        textAlign(LEFT);
       }
       else {
-        text("do you need help?", width/2,height/2);
+        textSize(24);
+        textAlign(CENTER);
+        text("do you need help? (say \"yes\")", width/2,7*height/8);
+        textSize(fSize);
+        textAlign(LEFT);
       }
       if (YES_UTTERANCE.includes(mostrecentword.toLowerCase())) {
         state = STATES['WORD_CHILD'];
@@ -140,7 +148,7 @@ function draw() {
         [undistorted_pts,pts,stress_xc,word_w] = wordToStressPts(current_word);
         // center the word
         X_SHIFT = width/2 - textWidth(current_word)/2;
-        Y_SHIFT = height/2;
+        Y_SHIFT = 2*height/3; // baseline
         playhead = X_SHIFT; // set playhead to left side of word
       }
       break;
@@ -422,7 +430,7 @@ function syllabify(words) {
         // noStroke();
         // ellipse(pt.x,pt.y,5,5);
 
-        fill(0);
+        fill(255);
         noStroke();
         vertex(pt.x.get(),pt.y.get());
       }
