@@ -7,19 +7,51 @@
 //  vids[counter].style('display', 'initial');
 
 // State machine model
-const STATES = {'INTRO':0, 'HELLO':8, 'SHELF':1, 'READING':2, 'HELP':3, 'WORD_CHILD':4, 'WORD_VUI':5, 'DEFINE':6, 'STATS':7};
+const STATES = {
+  'INTRO': 0,
+  'HELLO': 8,
+  'SHELF': 1,
+  'READING': 2,
+  'HELP': 3,
+  'WORD_CHILD': 4,
+  'WORD_VUI': 5,
+  'DEFINE': 6,
+  'STATS': 7
+};
+
 let animations = {}; // dict where key is the state number, value is a GIF
 let screens = {}; // dict where key is the state number, value is a PNG
+let blobs = [];
 
+let lastState = -1;
 let state = STATES['INTRO'];
 let page_num = 0; // page number for reading
 let state_timer;
 
 // VUI model
 let hesitation_timer; // time since last word was recognized
-let mostrecentword=""; // last spoken word
-const YES_UTTERANCE = ["yes", "yeah", "ya", "uh-huh","okay","ok","yep","yeppers"];
+let mostrecentword = ""; // last spoken word
+const YES_UTTERANCE = ["yes", "yeah", "ya", "uh-huh", "okay", "ok", "yep", "yeppers"];
 const NO_UTTERANCE = ["no"];
+
+let vx;
+let vy;
+
+/*
+let keyFrames = [
+  ['celebrate',[]],
+  ['encourage',[]],
+  ['hello_goodbye',[]],
+  ['help',[]],
+  ['listen',[]],
+  ['loading',[]],
+  ['read',[]],
+  ['teach',[]]
+]*/
+
+let keyFrames = {};
+
+let shadingBlobs;
 
 // Variables for word-focus view
 let playing = false;
@@ -73,6 +105,8 @@ function setup() {
 
   state_timer = new Timer();
   hesitation_timer = new Timer();
+
+  loadBlobFrames();
 }
 
 function draw() {
@@ -82,72 +116,95 @@ function draw() {
 
   showCurrentAni(animations);
   showCurrentImg(screens);
+  updateBlobs();
 
-  switch(state) {
+  switch (state) {
+
     case STATES['INTRO']:
+      if (lastState != state) {
+        assignBlobs(state);
+      }
       if (state_timer.elapsed(2.5)) {
         state_timer.start();
         state = STATES['HELLO'];
       }
+      lastState = STATES['INTRO'];
       break;
 
     case STATES['HELLO']:
+      if (lastState != state) {
+        assignBlobs(state);
+      }
       if (state_timer.elapsed(2)) {
         state_timer.start();
         state = STATES['SHELF'];
       }
+      lastState = STATES['HELLO'];
       break;
 
     case STATES['SHELF']:
+      if (lastState != state) {
+        assignBlobs(state);
+      }
       if (mouseIsPressed) {
         state = STATES['READING'];
         hesitation_timer.start();
       }
+      lastState = STATES['SHELF'];
       break;
 
     case STATES['READING']:
+      if (lastState != state) {
+        assignBlobs(state);
+      }
       print(hesitation_timer.currentTime());
       // No words have been read for 8 seconds
       if (hesitation_timer.elapsed(2)) {
         state = STATES['HELP'];
         hesitation_timer.start();
       }
+      lastState = STATES['READING'];
       break;
 
     case STATES['HELP']:
+      if (lastState != state) {
+        assignBlobs(state);
+      }
       if (hesitation_timer.elapsed(16)) {
         state = STATES['WORD_CHILD'];
         hesitation_timer.start();
 
         // get the current word as points
-        [undistorted_pts,pts,stress_xc,word_w] = wordToStressPts(current_word);
+        [undistorted_pts, pts, stress_xc, word_w] = wordToStressPts(current_word);
         // center the word
-        X_SHIFT = width/2 - textWidth(current_word)/2;
-        Y_SHIFT = height/2;
+        X_SHIFT = width / 2 - textWidth(current_word) / 2;
+        Y_SHIFT = height / 2;
         playhead = X_SHIFT; // set playhead to left side of word
-      }
-      else if (hesitation_timer.elapsed(2)) {
-        text("r u there", width/2,height/2);
-      }
-      else {
-        text("do you need help?", width/2,height/2);
+      } else if (hesitation_timer.elapsed(2)) {
+        text("r u there", width / 2, height / 2);
+      } else {
+        text("do you need help?", width / 2, height / 2);
       }
       if (YES_UTTERANCE.includes(mostrecentword.toLowerCase())) {
         state = STATES['WORD_CHILD'];
         hesitation_timer.start();
 
         // get the current word as points
-        [undistorted_pts,pts,stress_xc,word_w] = wordToStressPts(current_word);
+        [undistorted_pts, pts, stress_xc, word_w] = wordToStressPts(current_word);
         // center the word
-        X_SHIFT = width/2 - textWidth(current_word)/2;
-        Y_SHIFT = height/2;
+        X_SHIFT = width / 2 - textWidth(current_word) / 2;
+        Y_SHIFT = height / 2;
         playhead = X_SHIFT; // set playhead to left side of word
       }
+      lastState = STATES['HELP'];
       break;
 
     case STATES['WORD_CHILD']:
+      if (lastState != state) {
+        assignBlobs(state);
+      }
       // TODO: change to break into syllables
-      drawWord(X_SHIFT,Y_SHIFT); // draw points as given
+      drawWord(X_SHIFT, Y_SHIFT); // draw points as given
 
       // Child isn't reading so VUI helps
       if (hesitation_timer.elapsed(2)) {
@@ -155,19 +212,22 @@ function draw() {
         state = STATES['WORD_VUI'];
         playing = true; // play the current word out loud
         hesitation_timer.start();
-      }
-      else {
+      } else {
         // text("WORD_CHILD", width/2,height/2);
       }
+      lastState = STATES['WORD_CHILD'];
       break;
 
     case STATES['WORD_VUI']:
+      if (lastState != state) {
+        assignBlobs(state);
+      }
       // TODO: fix logic so it just plays once, then plays again on clicks
       if (playing) {
         // speaker.speak(current_word); // play the current word out loud
       }
       updateStressPts(playhead); // add syllable stresses up to given x position
-      drawWord(X_SHIFT,Y_SHIFT); // draw points as given
+      drawWord(X_SHIFT, Y_SHIFT); // draw points as given
 
       // we haven't hit the end of the word
       if (playhead < (X_SHIFT + word_w)) {
@@ -178,40 +238,132 @@ function draw() {
       else {
         playing = false;
       }
+      lastState = STATES['WORD_VUI'];
       break;
 
     case STATES['DEFINE']:
+      if (lastState != state) {
+        assignBlobs(state);
+      }
+      lastState = STATES['DEFINE'];
       break;
 
     case STATES['STATS']:
+      if (lastState != state) {
+        assignBlobs(state);
+      }
+      lastState = STATES['STATS'];
       break;
   }
 }
+
+//blobs
+
+function defaultBlobs() {}
+
+function assignBlobs(state) {
+
+  let mx = vx; //+ animations[state].width / 2;
+  let my = vy;
+
+  let num = 2;
+  for (let i = 0; i < num; i++) {
+    var b = new Blob();
+    b.inputKeyFrames(keyFrames[state]);
+    blobs.push(b);
+  }
+}
+
+function updateBlobs() {
+  for (let b of blobs) {
+    b.updateMesh();
+    b.drawMesh();
+  }
+}
+
+function loadBlobFrames() {
+  let dir = './assets/blobKeys/';
+  let files = ['celebrate', 'encourage', 'help', 'listen', 'loading', 'read', 'teach']; //'hello_goodbye'
+
+  for (let i = 0; i < files.length; i++) {
+    let raw = loadStrings(dir + files[i] + '.txt');
+    let processed = parseKeyFrames(raw);
+
+    keyFrames[STATES[files[i]]] = processed;
+    //Setting
+    /*
+    for (let k of keyFrames) {
+      if (k[0] === files[i]) {
+        k[1] = processed;
+      }
+    }*/
+  }
+}
+
+function parseKeyFrames(raw) {
+
+  let kfs = []; //Return Var
+
+  let outNodes = raw.length;
+  console.log(raw);
+  console.log(outNodes);
+  let incr = int(outNodes / 20);
+  let count = 0;
+
+  let last = -1; //Last Frame
+  let nKey = []; //Nodes for this Frame
+
+  for (let r = 0; r < raw.length; r++) {
+    console.log('s');
+    let nu = split(raw[r], ',');
+
+    if (last != nu[0]) {
+      if (last = -1) { //First Case Exception
+        last = nu[0];
+      }
+      kfs.push(nKey);
+
+      nKey = [];
+      nKey.push(nu[0]);
+    }
+    nKey.push([count, 9, nu[1], nu[2]]);
+    count += incr;
+  }
+  return kfs;
+}
+
+function moveVUIChar(state, x, y) {
+  animations[state].position(x, y);
+}
+
+//Next
 
 function parseResult() {
   // recognition system will often append words into phrases.
   // so hack here is to only use the last word:
   mostrecentword = listener.resultString.split(' ').pop();
   var resultstring = listener.resultString;
-  
+
   print(resultstring);
   print(mostrecentword);
   hesitation_timer.start();
 }
 
 // once the record ends or an error happens, start() again. this should keep it going
-function restart(){
-	listener.start();
+function restart() {
+  listener.start();
 }
 
 function loadStateAni(state_name, gif_path, gif_x, gif_y, gif_w, gif_h) {
-  let x = gif_x || width/2;
-  let y = gif_y || height/2;
+  let x = gif_x || width / 2;
+  let y = gif_y || height / 2;
   let w = gif_w || 400;
   let h = gif_h || 400;
   animations[STATES[state_name]] = createImg(gif_path).hide();
-  animations[STATES[state_name]].position(x,y);
-  animations[STATES[state_name]].size(w,h);
+  animations[STATES[state_name]].position(x, y);
+  animations[STATES[state_name]].size(w, h);
+  vx = x;
+  vy = y;
 }
 
 function loadStateBg(state_name, img_path) {
@@ -219,7 +371,7 @@ function loadStateBg(state_name, img_path) {
 }
 
 function hideAll(img_dict) {
-  for (let [state,img] of Object.entries(img_dict)) {
+  for (let [state, img] of Object.entries(img_dict)) {
     img.hide();
   }
 }
@@ -232,7 +384,7 @@ function showCurrentAni(img_dict) {
 
 function showCurrentImg(img_dict) {
   if (state in img_dict) {
-    image(img_dict[state],0,0);
+    image(img_dict[state], 0, 0);
   }
 }
 
@@ -247,17 +399,18 @@ function mousePressed() {
 // gaussian function
 // default values set for curve peak, height, and std_dev
 function gaussian(x, center, height, std_dev) {
-  let peak_xc = center || mouseX-width/2;
+  let peak_xc = center || mouseX - width / 2;
   // let peak_xc = center || (map(mouseX-width/2, 0, width, 0, textWidth(msg))); // instead of textWidth(msg) can use bounds.w
   let curve_h = height || 600;
   let curve_sd = std_dev || 100;
 
-  return curve_h*Math.E**(-1* (x - peak_xc)**2 / (2* curve_sd**2));
+  return curve_h * Math.E ** (-1 * (x - peak_xc) ** 2 / (2 * curve_sd ** 2));
 }
 
 // RiTa only gives syllables with phonemes, so we have our own syllable function
 // https://stackoverflow.com/questions/49403285/splitting-word-into-syllables-in-javascript/49407494
 const syllableRegex = /[^aeiouy]*[aeiouy]+(?:[^aeiouy]*$|[^aeiouy](?=[^aeiouy]))?/gi;
+
 function syllabify(words) {
   return words.match(syllableRegex);
 }
@@ -271,7 +424,7 @@ function syllabify(words) {
  * @return {number[]} stress_positions Array of x-centers of stressed syllables
  * @return {number} x the width of the word
  */
- function wordToStressPts(word) {
+function wordToStressPts(word) {
   let word_pts = [];
   let stress_positions = [];
 
@@ -283,8 +436,8 @@ function syllabify(words) {
   let y = 0;
 
   // 1. Iterate through syllables
-  for (let [i, syllable]  of syllables.entries()) {
-    let syl_pts=[]; // Pts array for this syllable
+  for (let [i, syllable] of syllables.entries()) {
+    let syl_pts = []; // Pts array for this syllable
 
     // If this syllable is stressed, save the center position
     let stressed = !!parseInt(stresses[i]); // or Boolean(parseInt(stresses[i]))
@@ -292,12 +445,12 @@ function syllabify(words) {
       // print("stressed syllable: ", syllable);
       let bounds = font.textBounds(syllable, x, 0, fSize);
       let syl_w = bounds.w + bounds.advance;
-      let syl_xc = x + syl_w/2; // x-center of syllable
+      let syl_xc = x + syl_w / 2; // x-center of syllable
       stress_positions.push(syl_xc);
     }
 
     // 2. Iterate through letters, saving points
-    for (let j=0; j<syllable.length; j++) {
+    for (let j = 0; j < syllable.length; j++) {
       let m = syllable[j];
       let letter_pts = font.textToPoints(m, x, y, fSize);
       let bounds = font.textBounds(m, 0, 0, fSize);
@@ -349,7 +502,7 @@ function syllabify(words) {
   }
 
   // return [word_sf,stress_positions];
-  return [word_pts,word_sf,stress_positions,x];
+  return [word_pts, word_sf, stress_positions, x];
 }
 
 /**
@@ -360,31 +513,31 @@ function syllabify(words) {
  *                          3rd level is each pt for that letter, and 4th level is a dict at each point {x: SoftFloat, y: SoftFloat}
  * @global {number[]} stress_xc Array of x-centers of stressed syllables
  */
- function updateStressPts(x_pos) {
+function updateStressPts(x_pos) {
   // Add distortion effect from all stressed syllables
   // 1. Iterate through syllables
-  for (let [i,syllable] of undistorted_pts.entries()) {
+  for (let [i, syllable] of undistorted_pts.entries()) {
     // 2. Iterate through letters
-    for (let [j,letter] of syllable.entries()) {
+    for (let [j, letter] of syllable.entries()) {
       // 3. Iterate through points
-      for (let [k,pt] of letter.entries()) {
+      for (let [k, pt] of letter.entries()) {
         pts[i][j][k].y.update(); // update SoftFloat for the distorted version of this point
         let adjusted_y = pt.y; // gaussian adjusted y value
 
         // Set new SoftFloat for y according to gaussian adjustment and mouseX position
         if (pt.x + X_SHIFT < x_pos) {
           // only distort the top 3/4 of the letter
-          if (pt.y < (-fSize/4)) {
+          if (pt.y < (-fSize / 4)) {
             // taking into account all stress centers
             // compute total gaussian effect on each point
             let gaussian_total = 0;
-            let gaussian_max = gaussian(stress_xc[0], center=stress_xc[0]);
+            let gaussian_max = gaussian(stress_xc[0], center = stress_xc[0]);
             for (xc of stress_xc) {
-              gaussian_total += gaussian(pt.x, center=xc);
+              gaussian_total += gaussian(pt.x, center = xc);
             }
             adjusted_y -= gaussian_total; // position y points according to gaussian func
             // map points to distribute the gaussian "lift"
-            adjusted_y = map(adjusted_y, -fSize/4 - gaussian_total, -fSize - gaussian_total, -fSize/4, -fSize - gaussian_total);
+            adjusted_y = map(adjusted_y, -fSize / 4 - gaussian_total, -fSize - gaussian_total, -fSize / 4, -fSize - gaussian_total);
           }
         }
         pts[i][j][k].y.setTarget(adjusted_y);
@@ -402,11 +555,11 @@ function syllabify(words) {
  * @param {number} x Bottom-left x
  * @param {number} y Bottom-left y
  */
- function drawWord(x,y) {
+function drawWord(x, y) {
 
   //Drawing Each Letter
   push();
-  translate(x,y);
+  translate(x, y);
 
   // 1. Iterate through syllables
   for (let syllable of pts) {
@@ -424,7 +577,7 @@ function syllabify(words) {
 
         fill(0);
         noStroke();
-        vertex(pt.x.get(),pt.y.get());
+        vertex(pt.x.get(), pt.y.get());
       }
       endShape();
     }
