@@ -143,9 +143,9 @@ function draw() {
       break;
 
     case STATES['SHELF']:
+
       if (lastState != state) {
         assignBlobs(state);
-      }
       if (mouseIsPressed) {
         state = STATES['READING'];
         hesitation_timer.start();
@@ -154,12 +154,12 @@ function draw() {
       break;
 
     case STATES['READING']:
+
       if (lastState != state) {
         assignBlobs(state);
-      }
       print(hesitation_timer.currentTime());
-      // No words have been read for 8 seconds
-      if (hesitation_timer.elapsed(2)) {
+      // No words have been read for 5 seconds
+      if (hesitation_timer.elapsed(5)) {
         state = STATES['HELP'];
         hesitation_timer.start();
       }
@@ -178,12 +178,12 @@ function draw() {
         [undistorted_pts, pts, stress_xc, word_w] = wordToStressPts(current_word);
         // center the word
         X_SHIFT = width / 2 - textWidth(current_word) / 2;
-        Y_SHIFT = height / 2;
+        Y_SHIFT = 2 * height / 3; // baseline
         playhead = X_SHIFT; // set playhead to left side of word
-      } else if (hesitation_timer.elapsed(2)) {
-        text("r u there", width / 2, height / 2);
+      } else if (hesitation_timer.elapsed(5)) {
+        subtitle("r u there (say \"yes\")");
       } else {
-        text("do you need help?", width / 2, height / 2);
+        subtitle("do you need help? (say \"yes\")");
       }
       if (YES_UTTERANCE.includes(mostrecentword.toLowerCase())) {
         state = STATES['WORD_CHILD'];
@@ -193,7 +193,7 @@ function draw() {
         [undistorted_pts, pts, stress_xc, word_w] = wordToStressPts(current_word);
         // center the word
         X_SHIFT = width / 2 - textWidth(current_word) / 2;
-        Y_SHIFT = height / 2;
+        Y_SHIFT = 2 * height / 3; // baseline
         playhead = X_SHIFT; // set playhead to left side of word
       }
       lastState = STATES['HELP'];
@@ -204,10 +204,11 @@ function draw() {
         assignBlobs(state);
       }
       // TODO: change to break into syllables
+      subtitle("TODO: break into syllables. if you don't read for 5s, VUI will help!");
       drawWord(X_SHIFT, Y_SHIFT); // draw points as given
 
       // Child isn't reading so VUI helps
-      if (hesitation_timer.elapsed(2)) {
+      if (hesitation_timer.elapsed(5)) {
         speaker.speak(current_word);
         state = STATES['WORD_VUI'];
         playing = true; // play the current word out loud
@@ -222,6 +223,8 @@ function draw() {
       if (lastState != state) {
         assignBlobs(state);
       }
+      subtitle("end of the prototype for now");
+
       // TODO: fix logic so it just plays once, then plays again on clicks
       if (playing) {
         // speaker.speak(current_word); // play the current word out loud
@@ -575,7 +578,7 @@ function drawWord(x, y) {
         // noStroke();
         // ellipse(pt.x,pt.y,5,5);
 
-        fill(0);
+        fill(255);
         noStroke();
         vertex(pt.x.get(), pt.y.get());
       }
@@ -583,4 +586,12 @@ function drawWord(x, y) {
     }
   }
   pop();
+}
+
+function subtitle(txt) {
+  textSize(24);
+  textAlign(CENTER);
+  text(txt, width / 2, 7 * height / 8);
+  textSize(fSize);
+  textAlign(LEFT);
 }
