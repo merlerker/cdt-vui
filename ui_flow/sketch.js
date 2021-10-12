@@ -37,19 +37,35 @@ const NO_UTTERANCE = ["no"];
 let vx;
 let vy;
 
-/*
-let keyFrames = [
-  ['celebrate',[]],
-  ['encourage',[]],
-  ['hello_goodbye',[]],
-  ['help',[]],
-  ['listen',[]],
-  ['loading',[]],
-  ['read',[]],
-  ['teach',[]]
-]*/
+let time = 0;
+let fps = 10;
+let frames = 0;
 
+let animState = 'loading';
+
+let files = ['celebrate', 'encourage', 'hello_goodbye', 'help', 'listen', 'loading', 'read', 'teach'];
+let fNums = {
+  'celebrate' : 6,
+  'encourage' : 6,
+  'hello_goodbye' : 6,
+  'help' : 5,
+  'listen' : 10,
+  'loading' : 21,
+  'read' : 8,
+  'teach': 6,
+  'celebrate-help' : 7,
+  'help-read' : 7,
+  'help-teach' : 4,
+  'listen-celebrate' : 7,
+  'listen-encourage' : 6,
+  'listen-help' : 7,
+  'loading-hello' : 51,
+  'read-listen' : 6,
+  'teach-celebrate' : 5,
+  'teach-help' : 6
+};
 let keyFrames = {};
+let keyTxt = {};
 
 let shadingBlobs;
 
@@ -75,8 +91,10 @@ function preload() {
   // preload OTF font file
   font = loadFont('./assets/Roboto-Bold.ttf');
 
-  loadStateAni('INTRO', "assets/GIFS/loading.gif");
-  loadStateAni('HELLO', "assets/GIFS/hello_goodbye.gif");
+  for (let vstate of files) {
+    let path = "assets/PNGS/" + vstate + "/";
+    loadStateAni(vstate, path, fNums[vstate]);
+  }
 
   loadStateBg('SHELF', "assets/SCREENS/Library.png")
   loadStateBg('READING', "assets/SCREENS/Reading.png")
@@ -85,6 +103,8 @@ function preload() {
   loadStateBg('WORD_VUI', "assets/SCREENS/Syllables.png")
   loadStateBg('DEFINE', "assets/SCREENS/Syllables.png")
   loadStateBg('STATS', "assets/SCREENS/Dashboard.png")
+
+  loadTxtFrames();
 }
 
 function setup() {
@@ -112,9 +132,7 @@ function setup() {
 function draw() {
   background(255);
 
-  hideAll(animations);
-
-  showCurrentAni(animations);
+  drawVUI(animState);
   showCurrentImg(screens);
   updateBlobs();
 
@@ -122,7 +140,8 @@ function draw() {
 
     case STATES['INTRO']:
       if (lastState != state) {
-        assignBlobs(state);
+        assignBlobs('loading');
+        animState = 'loading';
       }
       if (state_timer.elapsed(2.5)) {
         state_timer.start();
@@ -133,7 +152,8 @@ function draw() {
 
     case STATES['HELLO']:
       if (lastState != state) {
-        assignBlobs(state);
+        assignBlobs('hello_goodbye');
+        animState = 'hello_goodbye';
       }
       if (state_timer.elapsed(2)) {
         state_timer.start();
@@ -145,7 +165,9 @@ function draw() {
     case STATES['SHELF']:
 
       if (lastState != state) {
-        assignBlobs(state);
+        assignBlobs('reading');
+        animState = 'reading';
+      }
       if (mouseIsPressed) {
         state = STATES['READING'];
         hesitation_timer.start();
@@ -156,7 +178,9 @@ function draw() {
     case STATES['READING']:
 
       if (lastState != state) {
-        assignBlobs(state);
+        assignBlobs('help');
+        animState = 'help';
+      }
       print(hesitation_timer.currentTime());
       // No words have been read for 5 seconds
       if (hesitation_timer.elapsed(5)) {
@@ -168,7 +192,8 @@ function draw() {
 
     case STATES['HELP']:
       if (lastState != state) {
-        assignBlobs(state);
+        assignBlobs('listen');
+        animState = 'listen';
       }
       if (hesitation_timer.elapsed(16)) {
         state = STATES['WORD_CHILD'];
@@ -201,7 +226,8 @@ function draw() {
 
     case STATES['WORD_CHILD']:
       if (lastState != state) {
-        assignBlobs(state);
+        assignBlobs('listen');
+        animState = 'listen';
       }
       // TODO: change to break into syllables
       subtitle("TODO: break into syllables. if you don't read for 5s, VUI will help!");
@@ -221,7 +247,8 @@ function draw() {
 
     case STATES['WORD_VUI']:
       if (lastState != state) {
-        assignBlobs(state);
+        assignBlobs('listen');
+        animState = 'listen';
       }
       subtitle("end of the prototype for now");
 
@@ -246,14 +273,16 @@ function draw() {
 
     case STATES['DEFINE']:
       if (lastState != state) {
-        assignBlobs(state);
+        assignBlobs('listen');
+        animState = 'listen';
       }
       lastState = STATES['DEFINE'];
       break;
 
     case STATES['STATS']:
       if (lastState != state) {
-        assignBlobs(state);
+        assignBlobs('listen');
+        animState = 'listen';
       }
       lastState = STATES['STATS'];
       break;
@@ -264,7 +293,7 @@ function draw() {
 
 function defaultBlobs() {}
 
-function assignBlobs(state) {
+function assignBlobs(anim) {
 
   let mx = vx; //+ animations[state].width / 2;
   let my = vy;
@@ -272,7 +301,8 @@ function assignBlobs(state) {
   let num = 2;
   for (let i = 0; i < num; i++) {
     var b = new Blob();
-    b.inputKeyFrames(keyFrames[state]);
+    console.log(b);
+    b.inputKeyFrames(keyFrames[anim], fNums[anim]);
     blobs.push(b);
   }
 }
@@ -284,32 +314,27 @@ function updateBlobs() {
   }
 }
 
-function loadBlobFrames() {
+function loadTxtFrames() {
   let dir = './assets/blobKeys/';
-  let files = ['celebrate', 'encourage', 'help', 'listen', 'loading', 'read', 'teach']; //'hello_goodbye'
 
   for (let i = 0; i < files.length; i++) {
     let raw = loadStrings(dir + files[i] + '.txt');
-    let processed = parseKeyFrames(raw);
+    keyTxt[files[i]] = raw;
+  }
+}
 
-    keyFrames[STATES[files[i]]] = processed;
-    //Setting
-    /*
-    for (let k of keyFrames) {
-      if (k[0] === files[i]) {
-        k[1] = processed;
-      }
-    }*/
+function loadBlobFrames() {
+  for (let [key, value] of Object.entries(keyTxt)) {
+    let processed = parseKeyFrames(value);
+    keyFrames[key] = processed;
   }
 }
 
 function parseKeyFrames(raw) {
 
-  let kfs = []; //Return Var
+  let kfs = []; //Return
 
   let outNodes = raw.length;
-  console.log(raw);
-  console.log(outNodes);
   let incr = int(outNodes / 20);
   let count = 0;
 
@@ -317,7 +342,6 @@ function parseKeyFrames(raw) {
   let nKey = []; //Nodes for this Frame
 
   for (let r = 0; r < raw.length; r++) {
-    console.log('s');
     let nu = split(raw[r], ',');
 
     if (last != nu[0]) {
@@ -357,14 +381,38 @@ function restart() {
   listener.start();
 }
 
-function loadStateAni(state_name, gif_path, gif_x, gif_y, gif_w, gif_h) {
+function drawVUI(anim) {
+
+  //AdvanceFrames
+  if (time % fps == 0) {
+    frames += 1;
+  }
+
+  //ImageProperties
+  let fIndex = frames % fNums[anim];
+  console.log(animations);
+  console.log(animations[anim]);
+  cX = vx;//- animations[anim].width / 2;
+  cY = vy;// - animations[anim].height / 2;
+
+  image(animations[anim][fIndex], cX, cY);
+  time++;
+}
+
+function loadStateAni(state_name, img_path, num, gif_x, gif_y, gif_w, gif_h) {
   let x = gif_x || width / 2;
   let y = gif_y || height / 2;
   let w = gif_w || 400;
   let h = gif_h || 400;
-  animations[STATES[state_name]] = createImg(gif_path).hide();
-  animations[STATES[state_name]].position(x, y);
-  animations[STATES[state_name]].size(w, h);
+
+  let imgArr = [];
+  for (let j = 1; j < num + 1; j++) {
+    let nImg = loadImage(img_path + j + '.png');
+    nImg.resize(1000,0);
+    imgArr.push(nImg);
+  }
+  console.log(imgArr);
+  animations[state_name] = imgArr;
   vx = x;
   vy = y;
 }
@@ -373,6 +421,7 @@ function loadStateBg(state_name, img_path) {
   screens[STATES[state_name]] = loadImage(img_path);
 }
 
+/*
 function hideAll(img_dict) {
   for (let [state, img] of Object.entries(img_dict)) {
     img.hide();
@@ -384,6 +433,7 @@ function showCurrentAni(img_dict) {
     img_dict[state].show();
   }
 }
+*/
 
 function showCurrentImg(img_dict) {
   if (state in img_dict) {

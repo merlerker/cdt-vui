@@ -37,20 +37,14 @@ var Blob = function(p) {
   this.nW = 1000;
   this.nH = 0;
 
+  this.nFrames;
+
   //Time
   this.time = 0;
   this.fps = 10;
   this.frames = 0;
 
   this.key;
-
-  /*
-  p.preload = function() {
-    for (var i = 0; i < 28; i++) {
-      //listToEnco[i] = p.loadImage("./assets/" + (i + 1) + ".png");
-    }
-  }
-  */
 
   this.setup = function() {
 
@@ -60,108 +54,64 @@ var Blob = function(p) {
     p.noStroke();
 
     //Setup Meshes
-    initNodesAndSprings();
-    gifResize();
-    loadKeyFrames();
+    this.initNodesAndSprings();
   };
 
   this.draw = function() {
 
     p.background(255);
-    //p.ellipse(p.windowWidth,p.windowHeight,10, 10);
 
     //Draw Functions
-    updateMesh();
-    drawMesh();
-    drawChar(p.windowWidth / 2, p.windowHeight / 2);
-  }
-
-  this.drawChar = function(x, y) {
-
-    //AdvanceFrames
-    if (time % fps == 0) {
-      frames += 1;
-    }
-
-    //ImageProperties
-    let fIndex = frames % listToEnco.length;
-    cX = x - nW / 2;
-    cY = y - nH / 2;
-
-    p.image(listToEnco[fIndex], cX, cY);
-    time++;
+    this.updateMesh();
+    this.drawMesh();
   }
 
   this.updateMesh = function() {
 
-    applyFrames();
+    this.applyFrames();
 
     for (let i = 0; i < keyCurr.length; i += 2) {
-      keyCurr[i][1].update();
-      keyCurr[i+1][1].update();
+      this.keyCurr[i][1].update();
+      this.keyCurr[i+1][1].update();
 
       let uX = keyCurr[i][1].get();
       let uY = keyCurr[i+1][1].get();
 
-      nodes[keyCurr[i][0]].track(uX,uY);
+      this.nodes[keyCurr[i][0]].track(uX,uY);
     }
 
     // let all nodes repel each other
     for (var i = 0; i < nodes.length; i++) {
-      nodes[i].attractNodes(nodes);
+      this.nodes[i].attractNodes(nodes);
     }
     // apply spring forces
     for (var i = 0; i < springs.length; i++) {
-      springs[i].update();
+      this.springs[i].update();
     }
 
     // apply velocity vector and update position
     for (var i = 0; i < nodes.length; i++) {
-        nodes[i].update();
+        this.nodes[i].update();
     }
   }
 
-  /*
-  var gifResize = function() {
-    for (let img of listToEnco) {
-      img.resize(1000, 0);
-      nH = img.height;
-    }
-  }
-  */
-
-  /*
-  var loadKeyFrames = function() {
-    let rX = p.windowWidth - 1000 / 2;
-    let rY = p.windowHeight - 600 / 2;
-    keyFrames = [
-      [1, [15, 9, rX - 500, rY - 75],
-        [5, 9, rX - 500, rY - 500],
-      ],
-      [10, [0, 9, rX - 75, rY],
-        [10, 9, rX - 600, rY],
-        [5 , 9, rX - 300, rY-400]
-      ]
-    ];
-  }
-  */
-
-  this.inputKeyFrames = function(kfs) {
-    keyFrames = kfs;
+  this.inputKeyFrames = function(kfs, nF) {
+    this.keyFrames = kfs;
+    this.nFrames = nF;
   }
 
-  var applyFrames = function() {
+  this.applyFrames = function() {
 
-    let frame = frames % listToEnco.length + 1;
+    let frame = frames % nFrames + 1;
 
-    nextKeyFrames(frame);
+    this.nextKeyFrames(frame);
   }
 
   this.nextKeyFrames = function(frame) {
 
     if (prevTarget != frame) {
-      switched = false;
-      prevTarget = frame;
+      this.switched = false;
+      this.prevTarget = frame;
     }
 
     for (var i = 0; i < keyFrames.length; i++) {
@@ -169,9 +119,9 @@ var Blob = function(p) {
         if (keyFrames[i][0] == frame) {
 
           //Clear between frames
-          key = [];
-          keyNodes = [];
-          keyCurr = [];
+          this.key = [];
+          this.keyNodes = [];
+          this.keyCurr = [];
 
           //Fill between Keyframes
           let next = i + 1;
@@ -185,7 +135,7 @@ var Blob = function(p) {
 
           let c = 0;
           for (let k of key) {
-            //console.log(k);
+
             let nNum = k[0] * nNodes + k[1];
 
             //Keynodes
@@ -193,7 +143,6 @@ var Blob = function(p) {
             let sfYP = new SoftFloat(k[3]);
 
             let nX, nY = nodes[nNum].getPos();
-            //console.log(nodes[nNum]);
 
             let sfX = new SoftFloat(nX);
             let sfY = new SoftFloat(nY);
@@ -208,10 +157,6 @@ var Blob = function(p) {
 
             keyNodes.push([nNum, sfXP]);
             keyNodes.push([nNum, sfYP]);
-
-            //console.log(keyCurr);
-            //console.log('div')
-            //console.log(keyNodes);
             c += 2;
           }
 
@@ -231,24 +176,6 @@ var Blob = function(p) {
       p.curveVertex(nodes[i].x, nodes[i].y);
     }
     p.endShape(p.CLOSE);
-
-    /*
-    // draw nodes
-    p.stroke(0, 130, 164);
-    p.strokeWeight(2);
-    for (var i = 0; i < springs.length; i++) {
-      p.line(springs[i].fromNode.x, springs[i].fromNode.y, springs[i].toNode.x, springs[i].toNode.y);
-    }
-
-    // draw nodes
-    p.noStroke();
-    for (var i = 0; i < nodes.length; i++) {
-      p.fill(255);
-      p.ellipse(nodes[i].x, nodes[i].y, nodeDiameter, nodeDiameter);
-      p.fill(0);
-      p.ellipse(nodes[i].x, nodes[i].y, nodeDiameter - 4, nodeDiameter - 4);
-    }
-    */
   }
 
   this.initNodesAndSprings = function() {
@@ -329,5 +256,3 @@ var Blob = function(p) {
     }
   }
 }
-
-//var myp5 = new p5(sketch);
