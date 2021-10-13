@@ -2,121 +2,138 @@
 
 'use strict';
 
-var Blob = function(p) {
-  // an array for the nodes
-  this.nodes = [];
-  this.keyNodes = [];
-  this.keyCurr = [];
+class Blob {
 
-  // an array for the springs
-  this.springs = [];
+  constructor(kfs, nF, x, y, c) {
+    //Graphics
+    this.cArr = [color('#84B8FD'), color('#FFC907')]
 
-  //KeyFrameArray
-  this.keyFrames = [];
-  this.switched = false;
-  this.prevTarget = 0;
+    this.keyFrames = kfs;
+    this.nFrames = nF;
+    this.cX = x;
+    this.cY = y;
+    if (c == 1) {
+      this.cX += 10;
+      this.cY += 10;
+    }
+    this.bColor = this.cArr[c];
 
-  //node Properties
-  this.nSpokes = 20;
-  this.nNodes = 10;
-  this.maxRadius = 80;
+    // an array for the nodes
+    this.nodes = [];
+    this.keyNodes = [];
+    this.keyCurr = [];
 
-  //Graphics
-  this.c1 = color('#84B8FD');
+    // an array for the springs
+    this.springs = [];
 
-  // dragged node
-  this.selectedNodes = [];
-  this.selectedNode = null;
-  this.nodeDiameter = 16;
-  //let anchors = [];
+    //KeyFrameArray
+    //this.keyFrames = [];
+    this.switched = false;
+    this.prevTarget = 0;
 
-  //Gifs
-  this.listToEnco = [];
-  this.cX = 0;
-  this.cY = 0;
-  this.nW = 1000;
-  this.nH = 0;
+    //node Properties
+    this.nSpokes = 30;
+    this.nNodes = 10;
+    this.maxRadius = 40;
 
-  this.nFrames;
+    // dragged node
+    this.selectedNodes = [];
+    this.selectedNode = null;
+    this.nodeDiameter = 16;
+    //let anchors = [];
 
-  //Time
-  this.time = 0;
-  this.fps = 10;
-  this.frames = 0;
+    //Gifs
+    this.listToEnco = [];
+    //this.cX = 0;
+    //this.cY = 0;
+    this.nW = 1000;
+    this.nH = 0;
 
-  this.key;
+    //this.nFrames = 0;
 
-  this.setup = function() {
+    //Time
+    this.time = 0;
+    this.fps = 10;
+    this.frames = 0;
 
-    //Canvas + Graphics Setup
-    p.createCanvas(p.windowWidth, p.windowHeight);
-    p.background(255);
-    p.noStroke();
+    this.key;
 
     //Setup Meshes
     this.initNodesAndSprings();
   };
 
-  this.draw = function() {
-
-    p.background(255);
-
+  drawBlob() {
     //Draw Functions
     this.updateMesh();
     this.drawMesh();
+    this.drawKfP();
   }
 
-  this.updateMesh = function() {
+  drawKfP() {
+    for (let k of this.keyFrames) {
+      for (let i = 1; i < k.length; i++) {
+        fill('red');
+        circle(k[i][2], k[i][3], 10);
+      }
+    }
+  }
+
+  updateMesh() {
 
     this.applyFrames();
 
-    for (let i = 0; i < keyCurr.length; i += 2) {
+    for (let i = 0; i < this.keyCurr.length; i += 2) {
       this.keyCurr[i][1].update();
-      this.keyCurr[i+1][1].update();
+      this.keyCurr[i + 1][1].update();
 
-      let uX = keyCurr[i][1].get();
-      let uY = keyCurr[i+1][1].get();
+      let uX = this.keyCurr[i][1].get();
+      let uY = this.keyCurr[i + 1][1].get();
 
-      this.nodes[keyCurr[i][0]].track(uX,uY);
+      this.nodes[this.keyCurr[i][0]].track(uX, uY);
     }
 
     // let all nodes repel each other
-    for (var i = 0; i < nodes.length; i++) {
-      this.nodes[i].attractNodes(nodes);
+    for (var i = 0; i < this.nodes.length; i++) {
+      this.nodes[i].attractNodes(this.nodes);
     }
     // apply spring forces
-    for (var i = 0; i < springs.length; i++) {
+    for (var i = 0; i < this.springs.length; i++) {
       this.springs[i].update();
     }
 
     // apply velocity vector and update position
-    for (var i = 0; i < nodes.length; i++) {
-        this.nodes[i].update();
+    for (var i = 0; i < this.nodes.length; i++) {
+      this.nodes[i].update();
     }
   }
 
-  this.inputKeyFrames = function(kfs, nF) {
+  inputKeyFrames(kfs, nF, x, y, c) {
     this.keyFrames = kfs;
     this.nFrames = nF;
+    this.cX = x;
+    this.cY = y;
+    if (c == 1) {
+      this.cX += 10;
+      this.cY += 10;
+    }
+    this.bColor = this.cArr[c];
+    print(c)
   }
 
-  this.applyFrames = function() {
-
-    let frame = frames % nFrames + 1;
-
+  applyFrames() {
+    let frame = frames % this.nFrames + 1;
     this.nextKeyFrames(frame);
   }
 
-  this.nextKeyFrames = function(frame) {
-
-    if (prevTarget != frame) {
+  nextKeyFrames(frame) {
+    if (this.prevTarget != frame) {
       this.switched = false;
       this.prevTarget = frame;
     }
 
-    for (var i = 0; i < keyFrames.length; i++) {
-      if (switched == false) {
-        if (keyFrames[i][0] == frame) {
+    for (var i = 0; i < this.keyFrames.length; i++) {
+      if (this.switched == false) {
+        if (this.keyFrames[i][0] == frame) {
 
           //Clear between frames
           this.key = [];
@@ -125,24 +142,24 @@ var Blob = function(p) {
 
           //Fill between Keyframes
           let next = i + 1;
-          if (next >= keyFrames.length) {
+          if (next >= this.keyFrames.length) {
             next = 0;
           }
 
-          for (let j = 1; j < keyFrames[next].length; j++) {
-            key.push(keyFrames[next][j]);
+          for (let j = 1; j < this.keyFrames[next].length; j++) {
+            this.key.push(this.keyFrames[next][j]);
           }
 
           let c = 0;
-          for (let k of key) {
+          for (let k of this.key) {
 
-            let nNum = k[0] * nNodes + k[1];
+            let nNum = k[0] * this.nNodes + k[1];
 
             //Keynodes
             let sfXP = new SoftFloat(k[2]);
             let sfYP = new SoftFloat(k[3]);
 
-            let nX, nY = nodes[nNum].getPos();
+            let nX, nY = this.nodes[nNum].getPos();
 
             let sfX = new SoftFloat(nX);
             let sfY = new SoftFloat(nY);
@@ -152,67 +169,81 @@ var Blob = function(p) {
             sfY.setTarget(sfYP.get());
 
             //currKeys
-            keyCurr.push([nNum, sfX]);
-            keyCurr.push([nNum, sfY]);
+            this.keyCurr.push([nNum, sfX]);
+            this.keyCurr.push([nNum, sfY]);
 
-            keyNodes.push([nNum, sfXP]);
-            keyNodes.push([nNum, sfYP]);
+            this.keyNodes.push([nNum, sfXP]);
+            this.keyNodes.push([nNum, sfYP]);
             c += 2;
           }
 
-          switched = true;
+          this.switched = true;
           return;
         }
       }
     }
   }
 
-  this.drawMesh = function() {
+  drawMesh() {
     //Draw Outline
-    p.fill(c1);
-    p.smooth();
-    p.beginShape();
-    for (let i = 10; i < nodes.length; i += nNodes) {
-      p.curveVertex(nodes[i].x, nodes[i].y);
+    fill(this.bColor);
+    noStroke();
+    smooth();
+    beginShape();
+    for (let i = 10; i < this.nodes.length; i += this.nNodes) {
+      curveVertex(this.nodes[i].x, this.nodes[i].y);
     }
-    p.endShape(p.CLOSE);
+    endShape(CLOSE);
+
+    // draw nodes
+    stroke(0, 130, 164);
+    strokeWeight(2);
+    for (var i = 0; i < this.springs.length; i++) {
+      line(this.springs[i].fromNode.x, this.springs[i].fromNode.y, this.springs[i].toNode.x, this.springs[i].toNode.y);
+    }
+
+    // draw nodes
+    noStroke();
+    for (var i = 0; i < this.nodes.length; i++) {
+      fill(255);
+      ellipse(this.nodes[i].x, this.nodes[i].y, this.nodeDiameter, this.nodeDiameter);
+      fill(0);
+      ellipse(this.nodes[i].x, this.nodes[i].y, this.nodeDiameter - 4, this.nodeDiameter - 4);
+    }
   }
 
-  this.initNodesAndSprings = function() {
+  initNodesAndSprings() {
 
     let spokes = [];
 
-    let cx = p.windowWidth / 2;
-    let cy = p.windowHeight / 2;
-
-    let theta = p.TWO_PI / nSpokes;
+    let theta = TWO_PI / this.nSpokes;
     let rad = 0;
 
-    for (let i = 0; i < nSpokes; i++) {
+    for (let i = 0; i < this.nSpokes; i++) {
       let spoke = []
-      for (let j = 0; j < nNodes; j++) {
-        rad = (j + 1) / nNodes * maxRadius;
-        let x = rad * p.cos(i * theta) + cx;
-        let y = -rad * p.sin(i * theta) + cy;
+      for (let j = 0; j < this.nNodes; j++) {
+        rad = (j + 1) / this.nNodes * this.maxRadius;
+        let x = rad * cos(i * theta) + this.cX;
+        let y = -rad * sin(i * theta) + this.cY;
         let n = new Node(x, y);
         spoke[j] = n;
       }
       spokes[i] = spoke;
     }
 
-    let cn = new Node(cx, cy);
-    nodes.push(cn);
+    let cn = new Node(this.cX, this.cY);
+    this.nodes.push(cn);
 
     for (let i = 0; i < spokes.length; i++) {
       for (let j = 0; j < spokes[i].length; j++) {
 
-        let rLen = maxRadius / (nNodes);
+        let rLen = this.maxRadius / (this.nNodes);
 
         if (j == 0) {
           var newSpring = new Spring(spokes[i][j], cn);
           newSpring.length = rLen;
           newSpring.stiffness = 0.5;
-          springs.push(newSpring);
+          this.springs.push(newSpring);
         }
         for (let h = 0; h < 2; h++) {
           for (let v = 0; v < 2; v++) {
@@ -236,14 +267,14 @@ var Blob = function(p) {
               sLength = rLen;
               sStiffness = 0.5;
             } else {
-              sLength = 2 * p.tan(theta / 2) * rLen * (j + 1);
+              sLength = 2 * tan(theta / 2) * rLen * (j + 1);
               sStiffness = 0.5;
             }
 
             var newSpring = new Spring(spokes[i][j], spokes[sI][nI]);
             newSpring.length = sLength;
             newSpring.stiffness = sStiffness;
-            springs.push(newSpring);
+            this.springs.push(newSpring);
           }
         }
       }
@@ -251,7 +282,7 @@ var Blob = function(p) {
 
     for (let s of spokes) {
       for (let n of s) {
-        nodes.push(n);
+        this.nodes.push(n);
       }
     }
   }

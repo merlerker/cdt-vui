@@ -94,6 +94,7 @@ var sketch = function(p) {
 
     applyFrames();
 
+    console.log(keyCurr);
     for (let i = 0; i < keyCurr.length; i += 2) {
       keyCurr[i][1].update();
       keyCurr[i+1][1].update();
@@ -174,7 +175,6 @@ var sketch = function(p) {
 
           let c = 0;
           for (let k of key) {
-            console.log(k);
             let nNum = k[0] * nNodes + k[1];
 
             //Keynodes
@@ -182,7 +182,6 @@ var sketch = function(p) {
             let sfYP = new SoftFloat(k[3]);
 
             let nX, nY = nodes[nNum].getPos();
-            console.log(nodes[nNum]);
 
             let sfX = new SoftFloat(nX);
             let sfY = new SoftFloat(nY);
@@ -198,9 +197,6 @@ var sketch = function(p) {
             keyNodes.push([nNum, sfXP]);
             keyNodes.push([nNum, sfYP]);
 
-            console.log(keyCurr);
-            console.log('div')
-            console.log(keyNodes);
             c += 2;
           }
 

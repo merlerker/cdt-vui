@@ -38,36 +38,35 @@ let vx;
 let vy;
 
 let time = 0;
-let fps = 10;
+let fps = 30;
 let frames = 0;
+let rsFactor = 0;
 
 let animState = 'loading';
 
 let files = ['celebrate', 'encourage', 'hello_goodbye', 'help', 'listen', 'loading', 'read', 'teach'];
 let fNums = {
-  'celebrate' : 6,
-  'encourage' : 6,
-  'hello_goodbye' : 6,
-  'help' : 5,
-  'listen' : 10,
-  'loading' : 21,
-  'read' : 8,
+  'celebrate': 6,
+  'encourage': 6,
+  'hello_goodbye': 6,
+  'help': 5,
+  'listen': 10,
+  'loading': 21,
+  'read': 8,
   'teach': 6,
-  'celebrate-help' : 7,
-  'help-read' : 7,
-  'help-teach' : 4,
-  'listen-celebrate' : 7,
-  'listen-encourage' : 6,
-  'listen-help' : 7,
-  'loading-hello' : 51,
-  'read-listen' : 6,
-  'teach-celebrate' : 5,
-  'teach-help' : 6
+  'celebrate-help': 7,
+  'help-read': 7,
+  'help-teach': 4,
+  'listen-celebrate': 7,
+  'listen-encourage': 6,
+  'listen-help': 7,
+  'loading-hello': 51,
+  'read-listen': 6,
+  'teach-celebrate': 5,
+  'teach-help': 6
 };
-let keyFrames = {};
+let allKeyFrames = {};
 let keyTxt = {};
-
-let shadingBlobs;
 
 // Variables for word-focus view
 let playing = false;
@@ -127,14 +126,15 @@ function setup() {
   hesitation_timer = new Timer();
 
   loadBlobFrames();
+  initBlobs('loading');
 }
 
 function draw() {
   background(255);
 
-  drawVUI(animState);
   showCurrentImg(screens);
   updateBlobs();
+  drawVUI(animState);
 
   switch (state) {
 
@@ -143,7 +143,7 @@ function draw() {
         assignBlobs('loading');
         animState = 'loading';
       }
-      if (state_timer.elapsed(2.5)) {
+      if (state_timer.elapsed(5)) {
         state_timer.start();
         state = STATES['HELLO'];
       }
@@ -155,7 +155,7 @@ function draw() {
         assignBlobs('hello_goodbye');
         animState = 'hello_goodbye';
       }
-      if (state_timer.elapsed(2)) {
+      if (state_timer.elapsed(10)) {
         state_timer.start();
         state = STATES['SHELF'];
       }
@@ -165,8 +165,8 @@ function draw() {
     case STATES['SHELF']:
 
       if (lastState != state) {
-        assignBlobs('reading');
-        animState = 'reading';
+        assignBlobs('read');
+        animState = 'read';
       }
       if (mouseIsPressed) {
         state = STATES['READING'];
@@ -181,9 +181,9 @@ function draw() {
         assignBlobs('help');
         animState = 'help';
       }
-      print(hesitation_timer.currentTime());
+
       // No words have been read for 5 seconds
-      if (hesitation_timer.elapsed(5)) {
+      if (hesitation_timer.elapsed(10)) {
         state = STATES['HELP'];
         hesitation_timer.start();
       }
@@ -291,26 +291,40 @@ function draw() {
 
 //blobs
 
-function defaultBlobs() {}
+function defaultBlobs() {
+  for (let b of blobs) {
+    b.inputKeyFrames();
+  }
+}
 
 function assignBlobs(anim) {
 
-  let mx = vx; //+ animations[state].width / 2;
+  let mx = vx + animations[anim].width / 2;
+  let my = vy;
+
+  let num = 2;
+  for (let i = 0; i < blobs.length; i++) {
+    blobs[i].inputKeyFrames(allKeyFrames[anim], fNums[anim], vx, vy, i % 2);
+    print("assignBlobs" + i%2)
+  }
+}
+
+function initBlobs(anim) {
+  let mx = vx + animations[anim].width / 2;
   let my = vy;
 
   let num = 2;
   for (let i = 0; i < num; i++) {
-    var b = new Blob();
-    console.log(b);
-    b.inputKeyFrames(keyFrames[anim], fNums[anim]);
+    let b = new Blob(allKeyFrames[anim], fNums[anim], vx, vy, i % 2);
+    //b.inputKeyFrames(allKeyFrames[anim], fNums[anim], vx, vy, i % 2);
     blobs.push(b);
+    console.log(blobs);
   }
 }
 
 function updateBlobs() {
   for (let b of blobs) {
-    b.updateMesh();
-    b.drawMesh();
+    b.drawBlob();
   }
 }
 
@@ -326,16 +340,18 @@ function loadTxtFrames() {
 function loadBlobFrames() {
   for (let [key, value] of Object.entries(keyTxt)) {
     let processed = parseKeyFrames(value);
-    keyFrames[key] = processed;
+    allKeyFrames[key] = processed;
   }
 }
 
 function parseKeyFrames(raw) {
+  raw.pop();
 
   let kfs = []; //Return
 
   let outNodes = raw.length;
-  let incr = int(outNodes / 20);
+  incr = 30 / outNodes;
+
   let count = 0;
 
   let last = -1; //Last Frame
@@ -348,14 +364,16 @@ function parseKeyFrames(raw) {
       if (last = -1) { //First Case Exception
         last = nu[0];
       }
+
       kfs.push(nKey);
 
       nKey = [];
       nKey.push(nu[0]);
     }
-    nKey.push([count, 9, nu[1], nu[2]]);
+    nKey.push([round(count), 9, vx + nu[1] / rsFactor, vy + nu[2] / rsFactor]);
     count += incr;
   }
+  kfs.shift();
   return kfs;
 }
 
@@ -371,8 +389,6 @@ function parseResult() {
   mostrecentword = listener.resultString.split(' ').pop();
   var resultstring = listener.resultString;
 
-  print(resultstring);
-  print(mostrecentword);
   hesitation_timer.start();
 }
 
@@ -390,10 +406,8 @@ function drawVUI(anim) {
 
   //ImageProperties
   let fIndex = frames % fNums[anim];
-  console.log(animations);
-  console.log(animations[anim]);
-  cX = vx;//- animations[anim].width / 2;
-  cY = vy;// - animations[anim].height / 2;
+  cX = vx - animations[anim][0].width / 2;
+  cY = vy - animations[anim][0].height / 2;
 
   image(animations[anim][fIndex], cX, cY);
   time++;
@@ -407,21 +421,21 @@ function loadStateAni(state_name, img_path, num, gif_x, gif_y, gif_w, gif_h) {
 
   let imgArr = [];
   for (let j = 1; j < num + 1; j++) {
-    let nImg = loadImage(img_path + j + '.png');
-    nImg.resize(1000,0);
+    let nImg = loadImage(img_path + j + '.png', nImg => {
+      nImg.resize(w, 0);
+      rsFactor = nImg.width / w;
+    });
     imgArr.push(nImg);
   }
-  console.log(imgArr);
   animations[state_name] = imgArr;
-  vx = x;
-  vy = y;
+  vx = windowWidth / 2
+  vy = windowHeight / 2;
 }
 
 function loadStateBg(state_name, img_path) {
   screens[STATES[state_name]] = loadImage(img_path);
 }
 
-/*
 function hideAll(img_dict) {
   for (let [state, img] of Object.entries(img_dict)) {
     img.hide();
@@ -433,7 +447,6 @@ function showCurrentAni(img_dict) {
     img_dict[state].show();
   }
 }
-*/
 
 function showCurrentImg(img_dict) {
   if (state in img_dict) {
@@ -442,7 +455,6 @@ function showCurrentImg(img_dict) {
 }
 
 function mousePressed() {
-  print(mouseX, mouseY);
 
   if (state == STATES['WORD_VUI']) {
     playing = true;
