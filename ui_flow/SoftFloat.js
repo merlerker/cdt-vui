@@ -1,5 +1,5 @@
 
-// Code from Visualizing Data, Second Edition, Copyright Ben Fry.
+// Code from Visualizing Data, Second Edition, Copyright Ben Fry. Translated to p5js
 
 class SoftFloat {
 

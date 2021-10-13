@@ -7,108 +7,106 @@
 //  vids[counter].style('display', 'initial');
 
 // State machine model
-const STATES = {
-  'INTRO': 0,
-  'HELLO': 8,
-  'SHELF': 1,
-  'READING': 2,
-  'HELP': 3,
-  'WORD_CHILD': 4,
-  'WORD_VUI': 5,
-  'DEFINE': 6,
-  'STATS': 7
-};
-
-let animations = {}; // dict where key is the state number, value is a GIF
+const SCREEN_STATES = ['loading','library','reading','word focus','dashboard'];
 let screens = {}; // dict where key is the state number, value is a PNG
-let blobs = [];
-
-let lastState = -1;
-let state = STATES['INTRO'];
-let page_num = 0; // page number for reading
 let state_timer;
+let screen_state = 'loading';
+
+let page_num = 0; // page number for reading
 
 // VUI model
+// datastructures for states and animations
+const VUI_STATES = {'loading': 21, 'read': 8, 'listen': 10, 'encourage': 6, 'celebrate': 6, 'teach': 7, 'help': 5, 'hello-goodbye': 6}; // also default
+let state_animations = {}; // dict where key is the state number, value is a p5.play Animation
+const VUI_TRANSITIONS = {'TEACH TO CELEBRATE': 5, 'READ TO LISTEN': 6, 'LISTEN TO CELEBRATE': 7, 'LISTEN TO HELP': 7, 'LISTEN TO ENCOURAGE': 6, 'LOADING TO HELLO': 50, 'CELEBRATE TO HELP': 7, 'HELP TO TEACH': 4, 'HELP TO READ': 7, 'TEACH TO HELP': 6, 'READ TO TEACH':4, 'TEACH TO LISTEN':6};
+const REVERSE_TRANSITIONS = {'ENCOURAGE TO LISTEN': 'LISTEN TO ENCOURAGE'}
+let transition_animations = {}; // dict where key is the state number, value is a p5.play Animation
+const VUI_X = 1200;
+const VUI_Y = 850;
+// status
+let current_animation;
+let vui_state = 'loading';
+let transitioning = false;
 let hesitation_timer; // time since last word was recognized
-let mostrecentword = ""; // last spoken word
-const YES_UTTERANCE = ["yes", "yeah", "ya", "uh-huh", "okay", "ok", "yep", "yeppers"];
-const NO_UTTERANCE = ["no"];
 
-let vx;
-let vy;
-
-let time = 0;
-let fps = 10;
-let frames = 0;
-
-let animState = 'loading';
-
-let files = ['celebrate', 'encourage', 'hello_goodbye', 'help', 'listen', 'loading', 'read', 'teach'];
-let fNums = {
-  'celebrate' : 6,
-  'encourage' : 6,
-  'hello_goodbye' : 6,
-  'help' : 5,
-  'listen' : 10,
-  'loading' : 21,
-  'read' : 8,
-  'teach': 6,
-  'celebrate-help' : 7,
-  'help-read' : 7,
-  'help-teach' : 4,
-  'listen-celebrate' : 7,
-  'listen-encourage' : 6,
-  'listen-help' : 7,
-  'loading-hello' : 51,
-  'read-listen' : 6,
-  'teach-celebrate' : 5,
-  'teach-help' : 6
-};
-let keyFrames = {};
-let keyTxt = {};
-
-let shadingBlobs;
+// Variables for reading words
+const WORD_STATES = ['syllables','emphasis','full'];
+let book_words = ['chug', 'chug', 'chug', 'puff', 'puff', 'puff', 'ding-dong', 'ding-dong', 'the', 'little', 'train', 'rumbled', 'over', 'the', 'tracks', 'she', 'was', 'a', 'happy', 'little', 'train'];
+let word_idx = 11; // index of word we are reading
 
 // Variables for word-focus view
+let current_syllable = -1;
 let playing = false;
 let playhead;
-let current_word = "rumbled"; // word we are reading
-let X_SHIFT, Y_SHIFT;
+let _SHIFT, y_shift;
 let undistorted_pts; // Nested array (syllables, letters, pts) for undistorted pts
 let pts; // Nested array (syllables, letters, pts) for gaussian distorted pts
 let stress_xc; // x positions of stress centers
 let word_w;
 
-let font;
+let font, bookFont;
 let fSize; // font size
 
 //Variables for p5.js speech
 let listener;
 let speaker;
+let mostrecentword=""; // last spoken word
+let repeatwordcount=0;
+let highlight_x=294;
+let do_speak=false;
+let pause_rec=false; // pause speech recognition
+const YES_UTTERANCE = ["yes", "yeah", "ya", "uh-huh","okay","ok","yep","yeppers"];
+const NO_UTTERANCE = ["no"];
+
+// Variables for mic input
+let mic;
+let vol;
 
 //Preload Font
 function preload() {
   // preload OTF font file
-  font = loadFont('./assets/Roboto-Bold.ttf');
+  // font = loadFont('./assets/Roboto-Bold.ttf');
+  font = loadFont('./assets/Sofia Pro Regular.otf');
+  // font = 'sofia-pro';
+  bookFont = 'ten-oldstyle';
 
-  for (let vstate of files) {
-    let path = "assets/PNGS/" + vstate + "/";
-    loadStateAni(vstate, path, fNums[vstate]);
+  // load vui states
+  for (const [s,count] of Object.entries(VUI_STATES)) {
+    if (count > 0) {
+      state_animations[s] = loadAnimation(`assets/PNGS/${s}/vui_states_0.png`, `assets/PNGS/${s}/vui_states_${count-1}.png`);
+      state_animations[s].frameDelay = 10;
+    }
+    // add a default VUI state
+    if (s == 'listen') {
+      state_animations['default'] = loadAnimation(`assets/PNGS/${s}/vui_states_0.png`, `assets/PNGS/${s}/vui_states_${count-1}.png`);
+      state_animations['default'].frameDelay = 10;
+    }
   }
 
-  loadStateBg('SHELF', "assets/SCREENS/Library.png")
-  loadStateBg('READING', "assets/SCREENS/Reading.png")
-  loadStateBg('HELP', "assets/SCREENS/Reading.png")
-  loadStateBg('WORD_CHILD', "assets/SCREENS/Syllables.png")
-  loadStateBg('WORD_VUI', "assets/SCREENS/Syllables.png")
-  loadStateBg('DEFINE', "assets/SCREENS/Syllables.png")
-  loadStateBg('STATS', "assets/SCREENS/Dashboard.png")
+  // load transitions
+  for (const [t,count] of Object.entries(VUI_TRANSITIONS)) {
+    if (count > 0) {
+      transition_animations[t] = loadAnimation(`assets/PNGS/TRANSITIONS/${t}/vui_states_0.png`, `assets/PNGS/TRANSITIONS/${t}/vui_states_${count-1}.png`);
+      transition_animations[t].frameDelay = 10;
+      transition_animations[t].looping = false;
+    }
+  }
+  for (const [t,reverse_t] of Object.entries(REVERSE_TRANSITIONS)) {
+    let count = VUI_TRANSITIONS[reverse_t];
+    if (count > 0) {
+      transition_animations[t] = loadAnimation(`assets/PNGS/TRANSITIONS/${reverse_t}/vui_states_${count-1}.png`,`assets/PNGS/TRANSITIONS/${reverse_t}/vui_states_0.png`);
+      transition_animations[t].frameDelay = 10;
+      transition_animations[t].looping = false;
+    }
+  }
 
-  loadTxtFrames();
+  // load screens
+  for (const ss of SCREEN_STATES) {
+    screens[ss] = loadImage(`assets/SCREENS/${ss}.png`);
+  }
 }
 
 function setup() {
-
   createCanvas(1366, 1024); //iPad
 
   fSize = 256;
@@ -122,258 +120,269 @@ function setup() {
   listener.start();
 
   speaker = new p5.Speech();
+  speaker.onStart = pauseSpeechRec;
+  speaker.onEnd = resumeSpeechRec;
+
+  mic = new p5.AudioIn();
+  mic.start();
 
   state_timer = new Timer();
   hesitation_timer = new Timer();
 
-  loadBlobFrames();
+  current_animation = transition_animations['LOADING TO HELLO'];
+  // current_animation = transition_animations['ENCOURAGE TO LISTEN'];
+  // vui_state = 'help';
+  // current_animation = state_animations[vui_state];
 }
 
 function draw() {
   background(255);
 
-  drawVUI(animState);
-  showCurrentImg(screens);
-  updateBlobs();
+  // show the current screen
+  if (screen_state in screens) {
+    image(screens[screen_state],0,0);
+  }
 
-  switch (state) {
+  if (screen_state != 'loading') {
+    // animation(current_animation, width*(7/8), height*(7/8));
+    animation(current_animation, VUI_X, VUI_Y, 350,350);
+  }
 
-    case STATES['INTRO']:
-      if (lastState != state) {
-        assignBlobs('loading');
-        animState = 'loading';
+  switch(screen_state) {
+    case 'loading':
+
+      switch(current_animation) {
+        case transition_animations['LOADING TO HELLO']:
+          animation(current_animation, width/2, height/2);
+          // reached the end of the animation
+          if (current_animation.getFrame() == current_animation.getLastFrame()) {
+            current_animation = state_animations['hello-goodbye'];
+            state_timer.start()
+          }
+          break;
+        case state_animations['hello-goodbye']:
+          animation(current_animation, width/2, height/2 + 20, 861,861);
+          if (state_timer.elapsed(2) & (current_animation.getFrame() == current_animation.getLastFrame())) {
+            screen_state = 'library';
+            vui_state = 'default';
+            current_animation = state_animations[vui_state];
+            speaker.speak("choose a book");
+          }
+          break;
       }
-      if (state_timer.elapsed(2.5)) {
-        state_timer.start();
-        state = STATES['HELLO'];
-      }
-      lastState = STATES['INTRO'];
       break;
 
-    case STATES['HELLO']:
-      if (lastState != state) {
-        assignBlobs('hello_goodbye');
-        animState = 'hello_goodbye';
-      }
-      if (state_timer.elapsed(2)) {
-        state_timer.start();
-        state = STATES['SHELF'];
-      }
-      lastState = STATES['HELLO'];
-      break;
-
-    case STATES['SHELF']:
-
-      if (lastState != state) {
-        assignBlobs('reading');
-        animState = 'reading';
-      }
+    case 'library':
+      // subtitle("choose a book");
       if (mouseIsPressed) {
-        state = STATES['READING'];
+        screen_state = 'reading';
+        vui_state = 'listen';
+        current_animation = state_animations[vui_state];
         hesitation_timer.start();
       }
-      lastState = STATES['SHELF'];
       break;
 
-    case STATES['READING']:
+    case 'reading':      
+      highlightWord();
+      // print(hesitation_timer.currentTime());
+      
+      switch(current_animation) {
+        case state_animations['listen']:
+          // second round of no response
+          if (hesitation_timer.elapsed(9) & (current_animation.getFrame() == current_animation.getLastFrame())) {
+            vui_state = 'help';
+            transitioning = true;
+            current_animation = transition_animations['LISTEN TO HELP'];
+          }
+          else if (hesitation_timer.elapsed(8) & (current_animation.getFrame() == current_animation.getLastFrame())) {
+            vui_state = 'encourage';
+            transitioning = true;
+            current_animation = transition_animations['LISTEN TO ENCOURAGE'];
+          }
+          break;
+        case transition_animations['LISTEN TO ENCOURAGE']:
+          // transition complete, go to encourage
+          if (current_animation.getFrame() == current_animation.getLastFrame()) {
+            transitioning = false;
+            current_animation = state_animations['encourage'];
+            state_timer.start();
+          }
+          break;
+        case state_animations['encourage']:
+          if (state_timer.elapsed(4) & (current_animation.getFrame() == current_animation.getLastFrame())) {
+            current_animation = transition_animations['ENCOURAGE TO LISTEN'];
+          }
+          break;
+        case transition_animations['ENCOURAGE TO LISTEN']:
+          // transition complete, go to listen
+          if (current_animation.getFrame() == current_animation.getLastFrame()) {
+            transitioning = false;
+            current_animation = state_animations['listen'];
+          }
+          break;
+        case transition_animations['LISTEN TO HELP']:
+          // transition complete, go to listen
+          if (current_animation.getFrame() == current_animation.getLastFrame()) {
+            transitioning = false;
+            current_animation = state_animations['help'];
+            speaker.speak("do you need help? just say yes if you do!");
+            state_timer.start();
+          }
+          break;
+        case state_animations['help']:
+          // subtitle("do you need help? just say yes if you do!");
+          if (YES_UTTERANCE.includes(mostrecentword) || state_timer.elapsed(8)) {
+            // get the current word as points
+            [undistorted_pts,pts,stress_xc,word_w] = wordToStressPts(book_words[word_idx]);
+            // center the word
+            x_shift = width/2 - textWidth(book_words[word_idx])/2;
+            y_shift = 460; // baseline
+            playhead = x_shift; // set playhead to left side of word
+            state_timer.start();
+            current_animation = transition_animations['HELP TO READ'];
 
-      if (lastState != state) {
-        assignBlobs('help');
-        animState = 'help';
+            do_speak = true;
+            screen_state = 'word focus';
+          }
+          break;
       }
-      print(hesitation_timer.currentTime());
-      // No words have been read for 5 seconds
-      if (hesitation_timer.elapsed(5)) {
-        state = STATES['HELP'];
-        hesitation_timer.start();
-      }
-      lastState = STATES['READING'];
+      
       break;
 
-    case STATES['HELP']:
-      if (lastState != state) {
-        assignBlobs('listen');
-        animState = 'listen';
-      }
-      if (hesitation_timer.elapsed(16)) {
-        state = STATES['WORD_CHILD'];
-        hesitation_timer.start();
+    case 'word focus':
+      drawWord(x_shift,y_shift); // draw points as given
 
-        // get the current word as points
-        [undistorted_pts, pts, stress_xc, word_w] = wordToStressPts(current_word);
-        // center the word
-        X_SHIFT = width / 2 - textWidth(current_word) / 2;
-        Y_SHIFT = 2 * height / 3; // baseline
-        playhead = X_SHIFT; // set playhead to left side of word
-      } else if (hesitation_timer.elapsed(5)) {
-        subtitle("r u there (say \"yes\")");
-      } else {
-        subtitle("do you need help? (say \"yes\")");
-      }
-      if (YES_UTTERANCE.includes(mostrecentword.toLowerCase())) {
-        state = STATES['WORD_CHILD'];
-        hesitation_timer.start();
-
-        // get the current word as points
-        [undistorted_pts, pts, stress_xc, word_w] = wordToStressPts(current_word);
-        // center the word
-        X_SHIFT = width / 2 - textWidth(current_word) / 2;
-        Y_SHIFT = 2 * height / 3; // baseline
-        playhead = X_SHIFT; // set playhead to left side of word
-      }
-      lastState = STATES['HELP'];
-      break;
-
-    case STATES['WORD_CHILD']:
-      if (lastState != state) {
-        assignBlobs('listen');
-        animState = 'listen';
-      }
-      // TODO: change to break into syllables
-      subtitle("TODO: break into syllables. if you don't read for 5s, VUI will help!");
-      drawWord(X_SHIFT, Y_SHIFT); // draw points as given
-
-      // Child isn't reading so VUI helps
-      if (hesitation_timer.elapsed(5)) {
-        speaker.speak(current_word);
-        state = STATES['WORD_VUI'];
+      if (state_timer.isAt(1) && do_speak && (current_animation == transition_animations['HELP TO READ'])) {
         playing = true; // play the current word out loud
-        hesitation_timer.start();
-      } else {
-        // text("WORD_CHILD", width/2,height/2);
+        speaker.speak(book_words[word_idx]); // play the current word out loud
+        do_speak = false;
       }
-      lastState = STATES['WORD_CHILD'];
-      break;
-
-    case STATES['WORD_VUI']:
-      if (lastState != state) {
-        assignBlobs('listen');
-        animState = 'listen';
-      }
-      subtitle("end of the prototype for now");
-
-      // TODO: fix logic so it just plays once, then plays again on clicks
+      // Word status
       if (playing) {
-        // speaker.speak(current_word); // play the current word out loud
+        updateStressPts(playhead); // add syllable stresses up to given x position
+        // we haven't hit the end of the word
+        if (playhead < (x_shift + word_w)) {
+          playhead += 20;
+        }
+        // when we hit the end of the word, stop playing the current word (only play once)
+        // override with mousePressed
+        else {
+          playing = false;
+          // current_animation = transition_animations['READ TO LISTEN'];
+        }
       }
-      updateStressPts(playhead); // add syllable stresses up to given x position
-      drawWord(X_SHIFT, Y_SHIFT); // draw points as given
-
-      // we haven't hit the end of the word
-      if (playhead < (X_SHIFT + word_w)) {
-        playhead += 20;
-      }
-      // when we hit the end of the word, stop playing the current word (only play once)
-      // override with mousePressed
+      // not playing
       else {
-        playing = false;
+        
       }
-      lastState = STATES['WORD_VUI'];
+
+      // VUI status
+      switch(current_animation) {
+        case transition_animations['HELP TO READ']:
+          // transition complete, go to listen
+          if (current_animation.getFrame() == current_animation.getLastFrame()) {
+            transitioning = false;
+            current_animation = state_animations['read'];
+            state_timer.start()
+          }
+          break;
+        case state_animations['read']:
+          if (state_timer.elapsed(2) & (current_animation.getFrame() == current_animation.getLastFrame())) {
+            current_animation = transition_animations['READ TO TEACH'];
+            do_speak = true;
+          }
+          break;
+        case transition_animations['READ TO TEACH']:
+            subtitle("now you try");
+            if (do_speak) {
+              speaker.speak("now you try")
+              do_speak = false;
+            }
+            if (current_animation.getFrame() == current_animation.getLastFrame()) {
+              transitioning = false;
+              current_animation = state_animations['teach'];
+              state_timer.start()
+            }
+            break;
+        case state_animations['teach']:
+          if (current_animation.getFrame() == current_animation.getLastFrame()) {
+            current_animation = transition_animations['TEACH TO LISTEN'];
+          }
+          break;
+        case transition_animations['TEACH TO LISTEN']:
+          if (current_animation.getFrame() == current_animation.getLastFrame()) {
+            transitioning = false;
+            current_animation = state_animations['listen'];
+            current_syllable = 0;
+            state_timer.start()
+          }
+          break;
+        case state_animations['listen']:
+          vol = mic.getLevel();
+
+          if ((vol > .005) & state_timer.elapsed(1)) {
+              current_syllable++;
+              state_timer.start();
+          }
+
+          // we've read all the syllables
+          if ((current_syllable >= pts.length) & (current_animation.getFrame() == current_animation.getLastFrame())) {
+            current_animation = transition_animations['LISTEN TO CELEBRATE'];
+          }
+          break;
+        case transition_animations['LISTEN TO CELEBRATE']:
+          if (current_animation.getFrame() == current_animation.getLastFrame()) {
+            transitioning = false;
+            current_animation = state_animations['celebrate'];
+            speaker.speak("hooray")
+            state_timer.start()
+          }
+          break;
+        case state_animations['celebrate']:
+          // subtitle("hooray")
+          // if (state_timer.elapsed(2) & (current_animation.getFrame() == current_animation.getLastFrame())) {
+          //   screen_state = 'reading2'
+          // }
+          break;
+      }
       break;
 
-    case STATES['DEFINE']:
-      if (lastState != state) {
-        assignBlobs('listen');
-        animState = 'listen';
-      }
-      lastState = STATES['DEFINE'];
+    case SCREEN_STATES['DEFINE']:
       break;
 
-    case STATES['STATS']:
-      if (lastState != state) {
-        assignBlobs('listen');
-        animState = 'listen';
-      }
-      lastState = STATES['STATS'];
+    case SCREEN_STATES['STATS']:
       break;
   }
 }
-
-//blobs
-
-function defaultBlobs() {}
-
-function assignBlobs(anim) {
-
-  let mx = vx; //+ animations[state].width / 2;
-  let my = vy;
-
-  let num = 2;
-  for (let i = 0; i < num; i++) {
-    var b = new Blob();
-    console.log(b);
-    b.inputKeyFrames(keyFrames[anim], fNums[anim]);
-    blobs.push(b);
-  }
-}
-
-function updateBlobs() {
-  for (let b of blobs) {
-    b.updateMesh();
-    b.drawMesh();
-  }
-}
-
-function loadTxtFrames() {
-  let dir = './assets/blobKeys/';
-
-  for (let i = 0; i < files.length; i++) {
-    let raw = loadStrings(dir + files[i] + '.txt');
-    keyTxt[files[i]] = raw;
-  }
-}
-
-function loadBlobFrames() {
-  for (let [key, value] of Object.entries(keyTxt)) {
-    let processed = parseKeyFrames(value);
-    keyFrames[key] = processed;
-  }
-}
-
-function parseKeyFrames(raw) {
-
-  let kfs = []; //Return
-
-  let outNodes = raw.length;
-  let incr = int(outNodes / 20);
-  let count = 0;
-
-  let last = -1; //Last Frame
-  let nKey = []; //Nodes for this Frame
-
-  for (let r = 0; r < raw.length; r++) {
-    let nu = split(raw[r], ',');
-
-    if (last != nu[0]) {
-      if (last = -1) { //First Case Exception
-        last = nu[0];
-      }
-      kfs.push(nKey);
-
-      nKey = [];
-      nKey.push(nu[0]);
-    }
-    nKey.push([count, 9, nu[1], nu[2]]);
-    count += incr;
-  }
-  return kfs;
-}
-
-function moveVUIChar(state, x, y) {
-  animations[state].position(x, y);
-}
-
-//Next
 
 function parseResult() {
-  // recognition system will often append words into phrases.
-  // so hack here is to only use the last word:
-  mostrecentword = listener.resultString.split(' ').pop();
-  var resultstring = listener.resultString;
+  if (!pause_rec) {
+    var resultstring = listener.resultString;
+    var result_lst = resultstring.split(' ');
+    var mostrecentwords = result_lst.slice(-2, result_lst.length);
 
-  print(resultstring);
-  print(mostrecentword);
-  hesitation_timer.start();
+    // recognition system will often append words into phrases.
+    // so hack here is to only use the last word:
+    var lastword = result_lst[result_lst.length-1];
+    
+    // repeat words
+    if (lastword == mostrecentword) {
+      repeatwordcount++;
+    }
+    else {
+      repeatwordcount = 0;
+    }
+
+    if (mostrecentwords == ['ding', 'dong']) {
+      mostrecentword = 'ding-dong';
+    }
+    mostrecentword=lastword.toLowerCase();
+
+    if (mostrecentword == book_words[word_idx]) {
+      hesitation_timer.start();
+    }
+    print(mostrecentword);
+  }
 }
 
 // once the record ends or an error happens, start() again. this should keep it going
@@ -381,47 +390,45 @@ function restart() {
   listener.start();
 }
 
-function drawVUI(anim) {
-
-  //AdvanceFrames
-  if (time % fps == 0) {
-    frames += 1;
+function highlightWord() {
+  var word_y = 830; // baseline y
+  // line 2
+  if (word_idx>8) {
+    word_y = 880;
+  }
+  // reposition x if we're on line 2
+  if (word_idx==9) {
+    highlight_x = 253;
   }
 
-  //ImageProperties
-  let fIndex = frames % fNums[anim];
-  console.log(animations);
-  console.log(animations[anim]);
-  cX = vx;//- animations[anim].width / 2;
-  cY = vy;// - animations[anim].height / 2;
+  textSize(31);
+  textFont(bookFont);
+  var word_w = textWidth(book_words[word_idx]);
+  textFont(font);
+  textSize(fSize);
 
-  image(animations[anim][fIndex], cX, cY);
-  time++;
+  stroke(0);
+  strokeWeight(5);
+  noFill();
+  line(highlight_x,word_y,highlight_x+word_w,word_y);
+
+  if (mostrecentword == book_words[word_idx]) {
+    highlight_x+=word_w;
+    word_idx++;
+  }
 }
 
-function loadStateAni(state_name, img_path, num, gif_x, gif_y, gif_w, gif_h) {
-  let x = gif_x || width / 2;
-  let y = gif_y || height / 2;
+function loadStateAni(state_name, gif_path, gif_x, gif_y, gif_w, gif_h) {
+  let x = gif_x || width/2;
+  let y = gif_y || height/2;
   let w = gif_w || 400;
   let h = gif_h || 400;
-
-  let imgArr = [];
-  for (let j = 1; j < num + 1; j++) {
-    let nImg = loadImage(img_path + j + '.png');
-    nImg.resize(1000,0);
-    imgArr.push(nImg);
-  }
-  console.log(imgArr);
-  animations[state_name] = imgArr;
-  vx = x;
-  vy = y;
+  state_animations[SCREEN_STATES[state_name]] = createImg(gif_path).hide();
+  state_animations[SCREEN_STATES[state_name]].position(x,y);
+  state_animations[SCREEN_STATES[state_name]].size(w,h);
 }
 
-function loadStateBg(state_name, img_path) {
-  screens[STATES[state_name]] = loadImage(img_path);
-}
 
-/*
 function hideAll(img_dict) {
   for (let [state, img] of Object.entries(img_dict)) {
     img.hide();
@@ -429,22 +436,15 @@ function hideAll(img_dict) {
 }
 
 function showCurrentAni(img_dict) {
-  if (state in img_dict) {
-    img_dict[state].show();
-  }
-}
-*/
-
-function showCurrentImg(img_dict) {
-  if (state in img_dict) {
-    image(img_dict[state], 0, 0);
-  }
+  // if (state in img_dict) {
+  //   img_dict[state].show();
+  // }
 }
 
 function mousePressed() {
   print(mouseX, mouseY);
 
-  if (state == STATES['WORD_VUI']) {
+  if (screen_state == SCREEN_STATES['WORD_VUI']) {
     playing = true;
   }
 }
@@ -529,7 +529,7 @@ function wordToStressPts(word) {
       for (let pt of letter) {
         let pt_sf = {};
 
-        // if (pt.x + X_SHIFT < mouseX) {
+        // if (pt.x + x_shift < mouseX) {
         //   // only distort the top 3/4 of the letter
         //   if (pt.y < (-fSize/4)) {
         //     // taking into account all stress centers
@@ -578,7 +578,7 @@ function updateStressPts(x_pos) {
         let adjusted_y = pt.y; // gaussian adjusted y value
 
         // Set new SoftFloat for y according to gaussian adjustment and mouseX position
-        if (pt.x + X_SHIFT < x_pos) {
+        if (pt.x + x_shift < x_pos) {
           // only distort the top 3/4 of the letter
           if (pt.y < (-fSize / 4)) {
             // taking into account all stress centers
@@ -615,7 +615,13 @@ function drawWord(x, y) {
   translate(x, y);
 
   // 1. Iterate through syllables
-  for (let syllable of pts) {
+  for (let [i, syllable] of pts.entries()) {
+    fill(0);
+    noStroke();
+    // not the current syllable, so draw lighter
+    if ((current_syllable>=0) && (current_syllable != i)) {
+      fill(0,0,0,150);
+    }
     // 2. Iterate through letters
     for (let letter of syllable) {
       beginShape();
@@ -628,8 +634,6 @@ function drawWord(x, y) {
         // noStroke();
         // ellipse(pt.x,pt.y,5,5);
 
-        fill(255);
-        noStroke();
         vertex(pt.x.get(), pt.y.get());
       }
       endShape();
@@ -644,4 +648,12 @@ function subtitle(txt) {
   text(txt, width / 2, 7 * height / 8);
   textSize(fSize);
   textAlign(LEFT);
+}
+
+function pauseSpeechRec() {
+  pause_rec=true;
+}
+
+function resumeSpeechRec() {
+  pause_rec=false;
 }
