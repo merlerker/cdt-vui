@@ -22,6 +22,9 @@ const VUI_TRANSITIONS = {'TEACH TO CELEBRATE': 5, 'READ TO LISTEN': 6, 'LISTEN T
 const REVERSE_TRANSITIONS = {'ENCOURAGE TO LISTEN': 'LISTEN TO ENCOURAGE'}
 let transition_animations = {}; // dict where key is the state string, value is a p5.play Animation
 let blob_images = {}; // dict where key is the state string, value is a p5.Image
+let blob_points = {}; // dict where key is the state string + _yellow or _blue, value is array of points
+let current_blob_points = []; // array where order is draw order, entry = [color, [pts]]
+let blob_blue, blob_yellow;
 
 const VUI_X = 1200;
 const VUI_Y = 850;
@@ -80,6 +83,13 @@ function preload() {
       state_animations[s].frameDelay = 10;
 
       blob_images[s] = loadImage(`assets/PNGS/blobs/${s}.png`);
+      // blob_points[s+"_yellow"] = parseToArray(loadStrings(`assets/BLOB_POINTS/${s}_yellow.txt`));
+      // blob_points[s+"_blue"] = parseToArray(loadStrings(`assets/BLOB_POINTS/${s}_blue.txt`));
+      // // save points for starting state
+      // if (s==vui_state) {
+      //   current_blob_points.push([blob_blue, parseToArray(loadStrings(`assets/BLOB_POINTS/${s}_blue.txt`))]);
+      //   current_blob_points.push([blob_yellow, parseToArray(loadStrings(`assets/BLOB_POINTS/${s}_yellow.txt`))]);
+      // }
     }
     // add a default VUI state
     if (s == 'listen') {
@@ -115,6 +125,9 @@ function preload() {
 
 function setup() {
   createCanvas(1366, 1024); //iPad
+
+  blob_blue = color('rgba(70, 148, 255, 150)');
+  blob_yellow = color('rgba(255, 201, 7, 150)');
 
   fSize = 256;
   textFont(font);
@@ -153,7 +166,7 @@ function draw() {
   }
 
   if (screen_state != 'loading') {
-    image(blob_images[vui_state], VUI_X, VUI_Y, 350,350);
+    image(blob_images[vui_state], VUI_X-10, VUI_Y, 350,350);
     // animation(current_animation, width*(7/8), height*(7/8));
     animation(current_animation, VUI_X, VUI_Y, 350,350);
   }
@@ -177,9 +190,9 @@ function draw() {
           animation(current_animation, width/2, height/2 + 20, 861,861);
           if (state_timer.elapsed(2) & (current_animation.getFrame() == current_animation.getLastFrame())) {
             screen_state = 'library';
-            vui_state = 'default';
+            vui_state = 'listen';
             current_animation = state_animations[vui_state];
-            speaker.speak("choose a book");
+            // speaker.speak("choose a book");
           }
           break;
       }
@@ -206,7 +219,7 @@ function draw() {
             transitioning = true;
             current_animation = transition_animations['LISTEN TO HELP'];
           }
-          else if (hesitation_timer.elapsed(8) & (current_animation.getFrame() == current_animation.getLastFrame())) {
+          else if (hesitation_timer.elapsed(6) & (current_animation.getFrame() == current_animation.getLastFrame())) {
             transitioning = true;
             current_animation = transition_animations['LISTEN TO ENCOURAGE'];
           }
@@ -680,4 +693,152 @@ function pauseSpeechRec() {
 
 function resumeSpeechRec() {
   pause_rec=false;
+}
+
+// parse string array into points array
+// ["x,y", "x,y", ... ] -> [[x,y], [x,y], ... ]
+function parseToArray(stringArr) {
+  let pts = [];
+  for (let i=0; i<stringArr.length; i++) {
+      let line = stringArr[i];
+
+      if (line.length > 0) {
+          let pt = line.split(","); // split x and y
+          for (let j=0; j<pt.length; j++) {
+              pt[j] = new SoftFloat(parseFloat(pt[j])); // convert string to float
+              console.log(pt);
+          }
+          pts.push(pt);
+      }
+  }
+  return pts;
+}
+
+// draw points using polar coordinates
+function drawPolar(ptsArr, yoff) {
+  let center = getArrayCenter(ptsArr); // returns array [x,y]
+  push();
+  translate(center[0], center[1]);
+
+  beginShape();
+  for (let i=0; i<ptsArr.length; i++) {
+      let pt = [ptsArr[i][0], ptsArr[i][1]];
+      let angle = getAngle(center, pt);
+
+      // offset is generated using perlin noise, which is always output between 0 and 1
+      // first parameter of noise() changes the wobble as we rotate around the center (parameterized on angle)
+      // second parameter of noise() changes the wobble over time
+      // to reduce wobble, we can change the noise parameters (move less along the noise curve each step in space/time)
+      // or we can map to smaller -/+ values
+      // let magnitude = 10;
+      
+      let magnitude = 10 + 500*vol;
+      // let offset = map(sin(angle*100 + frameCount*.01), -1, 1, -magnitude, magnitude); // distort w sin curve on edge
+      let offset = map(sin(angle*100 + yoff*2), -1, 1, -magnitude, magnitude); // distort w sin curve on edge
+      
+      // let magnitude = 20;
+      // let offset = map(noise(angle*.5, yoff), 0, 1, -magnitude, magnitude);
+
+      let r = getDistance(center, pt) + offset;
+      curveVertex(r * cos(angle), r * sin(angle));
+  }
+
+  endShape();
+  pop();
+
+  return yoff + .005;
+}
+
+// get the angle from A to B, where each is an array [x,y]
+function getAngle(A, B) {
+  // move A to 0,0
+  // we could also push to A as our center
+  let translated_x = B[0] - A[0];
+  let translated_y = B[1] - A[1];
+  return Math.atan2(translated_y, translated_x);
+}
+
+// get the distance from A to B, where each is an array [x,y]
+function getDistance(A, B) {
+  return Math.sqrt((A[0]-B[0])**2 + (A[1]-B[1])**2);
+}
+
+// get center of array of SoftFloats
+// return as array [x,y]
+function getArrayCenter(ptsArr) {
+  let x_sum = 0;
+  let y_sum = 0;
+  for (let i=0; i<ptsArr.length; i++) {
+      let pt = ptsArr[i];
+      x_sum += pt[0];
+      y_sum += pt[1];
+  }
+
+  let center = [x_sum/ptsArr.length, y_sum/ptsArr.length];
+  return center;
+}
+
+// draw array of softfloats
+function drawBlobs(ptsArr, trans_x, trans_y) {
+  push();
+  translate(trans_x, trans_y);
+
+  let first_color = ptsArr[0][0];
+  let first_pts = ptsArr[0][1];
+  let second_color = ptsArr[1][0];
+  let second_pts = ptsArr[1][1];
+
+  fill(first_color);
+  drawPolar(first_pts);
+
+  fill(second_color);
+  drawPolar(second_pts);
+
+  pop();
+}
+
+// update array of softfloats
+// return false if done updating
+function updateArray(ptsArr) {
+  let arr_targeting = false; // if any points in the array are still updating return true
+  for (let i=0; i<ptsArr.length; i++) {
+      let pt = ptsArr[i];
+      let pt_targeting;
+      pt_targeting = pt[0].update(); // update x
+      pt[1].update(); // update y
+      arr_targeting = arr_targeting || pt_targeting;
+  }
+  return arr_targeting;
+}
+
+// transition array A to B
+// setting new SoftFloat targets
+function targetArray(A, B) {
+  let mapping = {};
+  // more points in B than A
+  if (A.length < B.length) {
+      let step = Math.round(B.length / A.length);
+      for (let A_idx=0; A_idx<A.length; A_idx++) {
+          // let B_idx = A_idx;
+          let B_idx = A_idx * step; // skip extra points in the middle
+          if (B_idx < B.length) {
+              A[A_idx][0].setTarget(B[B_idx][0].get()); // set softfloat target for x
+              A[A_idx][1].setTarget(B[B_idx][1].get()); // set softfloat target for y
+              mapping[A_idx] = B_idx;
+          }
+      }
+  }
+  // more points in A than B
+  else {
+      let step = Math.round(A.length / B.length);
+      for (let B_idx=0; B_idx<B.length; B_idx++) {
+          // let A_idx = B_idx;
+          let A_idx = B_idx * step; // skip extra points in the middle
+          if (A_idx < A.length) {
+              mapping[A_idx] = B_idx;
+              A[A_idx][0].setTarget(B[B_idx][0].get()); // set softfloat target for x
+              A[A_idx][1].setTarget(B[B_idx][1].get()); // set softfloat target for y
+          }
+      }
+  }
 }

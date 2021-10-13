@@ -5,9 +5,18 @@ let myfilename = "blind-contour-04";
 let mysvg;
 let mypts = [];
 
+let blobs = ['loading', 'read', 'listen', 'encourage', 'celebrate', 'teach', 'help', 'hello-goodbye'];
+let blob_imgs = {};
+let blob_idx = 0;
+
 function preload() {
     // mysvg = loadImage("VUI_blind-contour/" + myfilename + ".svg");
     mysvg = loadImage("listening.png");
+
+    for (let blob_file of blobs) {
+        blob_imgs[blob_file] = loadImage(`blobs/${blob_file}.png`);
+    }
+    // mysvg = loadImage("");
 }
 
 function setup() {
@@ -17,7 +26,17 @@ function setup() {
 
 function draw() {
     background(220);
-    image(mysvg, 0,0);
+    // image(mysvg, 0,0);
+    let blob_state = blobs[blob_idx];
+    if (blob_state == 'loading') {
+        image(blob_imgs[blob_state],0,0,861,861);
+    }
+    else if (blob_state == 'listen') {
+        image(mysvg, 75,17,247,332);
+    }
+    else {
+        image(blob_imgs[blob_state],0,0,350,350);
+    }
 
     noFill();
     stroke(0);
@@ -59,6 +78,14 @@ function mousePressed() {
 function keyTyped() {
     if (key == 's') {
         print("saving points!")
-        saveStrings(mypts, myfilename + '.txt');
+        saveStrings(mypts, blobs[blob_idx] + '.txt');
+    }
+}
+
+function keyPressed() {
+    if (keyCode === RIGHT_ARROW) {
+        blob_idx++;
+        blob_idx = blob_idx%blobs.length;
+        mypts=[];
     }
 }
